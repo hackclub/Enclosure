@@ -34,6 +34,7 @@ export default function ShopPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     title: "",
@@ -42,17 +43,31 @@ export default function ShopPage() {
     href: ""
   });
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/shop-items`, { credentials: "include" });
-        if (!res.ok) return;
-        const data = (await res.json()) as ShopItem[];
-        setItems(data);
-      } catch (_err) {
-        // ignore
+  const loadItems = async () => {
+    setLoading(true);
+    setStatus(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/shop-items`, { credentials: "include" });
+      if (!res.ok) {
+        const text = await res.text();
+        setStatus(`Failed to load items: ${res.status} ${res.statusText} ${text}`);
+        setItems([]);
+        setLoading(false);
+        return;
       }
-    })();
+      const data = (await res.json()) as ShopItem[];
+      setItems(data || []);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setStatus(`Failed to load items: ${msg}`);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadItems();
   }, []);
 
   useEffect(() => {
@@ -121,21 +136,46 @@ export default function ShopPage() {
         <div className="container">
           <h2>Shop</h2>
           <div className="section-note">Browse the full shop list.</div>
-          <div className="grid">
-            {items.map((item) => (
-              <div key={item.id} className="card">
-                <div className="shop-img" aria-hidden>
-                  {item.img ? <img src={item.img} alt="" /> : null}
+          <div className="grid shop-grid">
+            {loading ? (
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 20 }}>Loading shop items…</div>
+            ) : status ? (
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 20 }}>
+                <div style={{ marginBottom: 8, color: 'var(--muted)' }}>{status}</div>
+                <button className="btn" onClick={() => loadItems()}>Retry</button>
+              </div>
+            ) : items.length === 0 ? (
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 20 }}>
+                No shop items available.
+                <div style={{ marginTop: 10 }}>
+                  <button className="btn" onClick={() => loadItems()}>Reload</button>
                 </div>
+              </div>
+            ) : (
+              items.map((item) => (
+              <div key={item.id} className="card shop-card">
+                <div className="shop-image">
+                  {item.img ? (
+                    <img src={item.img} alt={item.title} />
+                  ) : (
+                    <div className="shop-placeholder">No image</div>
+                  )}
+
+                  <div className="shop-badge">🍪 35</div>
+                  <div className="shop-bought">12 bought</div>
+                  <button className="shop-fav" aria-label="favorite">☆</button>
+                </div>
+
                 <h3>{item.title}</h3>
                 {item.note ? <p className="muted">{item.note}</p> : null}
-                {item.href ? (
-                  <a href={item.href} target="_blank" rel="noreferrer">
-                    View
-                  </a>
-                ) : null}
+
+                <div style={{ marginTop: 10 }}>
+                  {item.href ? (
+                    <a className="btn" href={item.href} target="_blank" rel="noreferrer">Claim</a>
+                  ) : null}
+                </div>
               </div>
-            ))}
+              ))}
           </div>
         </div>
       </section>
