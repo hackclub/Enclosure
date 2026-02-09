@@ -551,7 +551,7 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/auth/profile`);
+        const res = await fetch(`${API_BASE}/api/auth/profile`, { credentials: "include" });
         if (!res.ok) return;
         const data = (await res.json()) as { slackId?: string; name?: string | null };
         if (data?.name) setDisplayName(data.name);

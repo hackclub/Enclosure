@@ -1,7 +1,6 @@
 import { betterAuth } from "better-auth";
-import { createFieldAttribute } from "better-auth/db";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { genericOAuth } from "better-auth/plugins";
+import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { db } from "../db.js";
 import * as schema from "../schema.js";
 
@@ -15,13 +14,7 @@ function createAuth() {
       provider: "pg",
       schema,
     }),
-    user: {
-      additionalFields: {
-        slackId: createFieldAttribute("string", { required: false }),
-        verificationStatus: createFieldAttribute("string", { required: false }),
-        role: createFieldAttribute("string", { required: false }),
-      },
-    },
+    user: {},
     emailAndPassword: {
       enabled: false,
     },

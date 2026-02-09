@@ -45,7 +45,7 @@ export default function ShopPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/shop-items`);
+        const res = await fetch(`${API_BASE}/api/shop-items`, { credentials: "include" });
         if (!res.ok) return;
         const data = (await res.json()) as ShopItem[];
         setItems(data);
@@ -58,7 +58,7 @@ export default function ShopPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/auth/profile`);
+        const res = await fetch(`${API_BASE}/api/auth/profile`, { credentials: "include" });
         if (!res.ok) return;
         const data = (await res.json()) as ProfileResponse;
         const canManage = Boolean(data.canManageShop || data.role === "admin");

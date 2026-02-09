@@ -76,12 +76,11 @@ async function fetchSlackAvatar(opts: { slackId?: string | null; email?: string 
 }
 
 const app = express();
-app.use(
-  cors({
-    origin: FRONTEND_BASE_URL,
-    credentials: true
-  })
-);
+const corsOptions = process.env.NODE_ENV === 'production'
+  ? { origin: FRONTEND_BASE_URL, credentials: true }
+  : { origin: true, credentials: true };
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.get("/api/health", (_req, res) => {
@@ -516,6 +515,9 @@ app.get("/api/auth/profile", async (req, res) => {
   }
 });
 
+import { fileURLToPath } from 'node:url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const clientPath = path.join(__dirname, "..", "dist");
 const assetsPath = path.join(__dirname, "..", "assets");
 app.use("/assets", express.static(assetsPath));
