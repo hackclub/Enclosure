@@ -1,0 +1,135 @@
+[
+	{
+		"title": "Sticker pack",
+		"note": "fresh vinyl",
+		"img": "https://placehold.co/400x300?text=Stickers",
+		"href": "https://hackclub.com/shop/stickers",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Notebook",
+		"note": "grid",
+		"img": "https://placehold.co/400x300?text=Notebook",
+		"href": "https://hackclub.com/shop/notebook",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Keycaps",
+		"note": "HC set",
+		"img": "https://placehold.co/400x300?text=Keycaps",
+		"href": "https://hackclub.com/shop/keycaps",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "3D Print Credit",
+		"note": "$10",
+		"img": "https://placehold.co/400x300?text=3D+Print",
+		"href": "https://hackclub.com/shop/3d-print-credit",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "AI Credits",
+		"note": "Credits for your favorite AI providers",
+		"img": "https://placehold.co/400x300?text=AI+Credits",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Cloudflare Credits",
+		"note": "tunnels to storage",
+		"img": "https://placehold.co/400x300?text=Cloudflare",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "PCB Manufacturing Credits",
+		"note": "pcb manufacturing credit",
+		"img": "https://placehold.co/400x300?text=PCB+Credit",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Hot Chocolate",
+		"note": "2 swiss miss hot chocolate packets",
+		"img": "https://placehold.co/400x300?text=Hot+Chocolate",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Cloud Hosting Credits",
+		"note": "Credits for hosting providers",
+		"img": "https://placehold.co/400x300?text=Hosting",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Free Domain",
+		"note": "$10 grant to buy a domain",
+		"img": "https://placehold.co/400x300?text=Domain",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "iFixit Credits",
+		"note": "you fix it? iFixit!",
+		"img": "https://placehold.co/400x300?text=iFixit",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Raspberry Pi 5",
+		"note": "48h prize",
+		"img": "https://placehold.co/400x300?text=Raspberry+Pi+5",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Magic Keyboard",
+		"note": "wireless",
+		"img": "https://placehold.co/400x300?text=Magic+Keyboard",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Flipper Zero",
+		"note": "hacks",
+		"img": "https://placehold.co/400x300?text=Flipper+Zero",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "YubiKey",
+		"note": "security",
+		"img": "https://placehold.co/400x300?text=YubiKey",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Bambu Lab A1 mini",
+		"note": "printer",
+		"img": "https://placehold.co/400x300?text=Bambu+A1+mini",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Pebble Time 2",
+		"note": "classic",
+		"img": "https://placehold.co/400x300?text=Pebble+Time+2",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Mac Mini",
+		"note": "desktop prize",
+		"img": "https://placehold.co/400x300?text=Mac+Mini",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	},
+	{
+		"title": "Headphones",
+		"note": "ANC",
+		"img": "https://placehold.co/400x300?text=Headphones",
+		"href": "",
+		"createdAt": "2026-02-09T12:00:00.000Z"
+	}
+]
