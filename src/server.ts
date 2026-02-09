@@ -3,8 +3,8 @@ import express from "express";
 import cors from "cors";
 import path from "node:path";
 import { desc, eq } from "drizzle-orm";
-import { db } from "./db";
-import { projects, createdProjects, shopItems, user as users } from "./schema";
+import { db } from "./db.js";
+import { projects, createdProjects, shopItems, user as users } from "./schema.js";
 
 // Move all env variable assignments here
 const IDENTITY_HOST = process.env.HC_IDENTITY_HOST || "https://auth.hackclub.com";
