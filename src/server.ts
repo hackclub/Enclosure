@@ -87,6 +87,18 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
 
+// Debug endpoint: list files under the built `dist` directory (temporary)
+app.get("/__debug_dist", async (_req, res) => {
+  try {
+    const fs = await import("node:fs/promises");
+    const distDir = path.join(process.cwd(), "dist");
+    const list = await fs.readdir(distDir);
+    res.json({ distDir, list });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 app.get("/api/projects", async (_req, res) => {
   const rows = await db.select().from(projects).orderBy(desc(projects.createdAt));
   res.json(rows);
