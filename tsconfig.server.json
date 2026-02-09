@@ -2,11 +2,12 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "CommonJS",
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "outDir": "dist-server",
     "rootDir": "src",
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "noImplicitAny": false,
     "resolveJsonModule": true
   },
   "include": ["src/server.ts", "src/db.ts", "src/schema.ts", "src/auth/**/*.ts"]
