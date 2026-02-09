@@ -1,4 +1,4 @@
-import { betterAuth, OAuth2UserInfo } from "better-auth";
+import { betterAuth } from "better-auth";
 import { createFieldAttribute } from "better-auth/db";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { genericOAuth } from "better-auth/plugins";
@@ -165,7 +165,7 @@ function createAuth() {
             getUserInfo: async (tokens) => {
               // User is identified/created in `getToken`; just return it here.
               const userInfo = (tokens.raw as { userInfo?: unknown } | undefined)?.userInfo;
-              return (userInfo ?? null) as OAuth2UserInfo | null;
+              return userInfo ?? null;
             },
           },
         ],
