@@ -1,7 +1,7 @@
-import { betterAuth } from "better-auth";
-import { createFieldAttribute } from "better-auth/db";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { genericOAuth } from "better-auth/plugins";
+import betterAuth from "better-auth";
+import createFieldAttribute from "better-auth/db";
+import drizzleAdapter from "better-auth/adapters/drizzle";
+import genericOAuth from "better-auth/plugins";
 import { db } from "../db";
 import * as schema from "../schema";
 
@@ -155,17 +155,13 @@ function createAuth() {
                 accessToken: data.access_token,
                 refreshToken: data.refresh_token,
                 idToken: data.id_token ?? null,
-                raw: {
-                  ...data,
-                  userInfo,
-                },
+                userInfo,
               };
             },
 
             getUserInfo: async (tokens) => {
               // User is identified/created in `getToken`; just return it here.
-              const userInfo = (tokens.raw as { userInfo?: unknown } | undefined)?.userInfo;
-              return userInfo ?? null;
+              return tokens.userInfo ?? null;
             },
           },
         ],
