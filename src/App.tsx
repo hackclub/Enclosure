@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 const API_BASE = (() => {
   const env = import.meta.env.VITE_API_BASE;
@@ -148,13 +148,7 @@ const requirements = [
   },
 ];
 
-function Hero({
-  authed,
-  authMessage,
-}: {
-  authed: boolean;
-  authMessage?: string;
-}) {
+function Hero() {
   return (
     <section className="hero">
       <div className="hero-inner">
@@ -200,43 +194,17 @@ function Hero({
           You design it → we 3D print it → we ship it to you.
         </div>
 
-        {authMessage ? (
-          <div
-            style={{
-              marginTop: 12,
-              marginBottom: 8,
-              color: "#fca5a5",
-              fontWeight: 600,
-            }}
-          >
-            {authMessage}
-          </div>
-        ) : null}
-
         <div className="buttons-wrap">
           <div className="buttons">
             <div className="buttons-row top">
-              {authed ? (
-                <button
-                  className="btn"
-                  type="button"
-                  onClick={() => {
-                    window.location.href = "/dashboard";
-                  }}
-                >
-                  Go to Dashboard →
-                </button>
-              ) : (
-                <button
-                  className="btn"
-                  type="button"
-                  onClick={() => {
-                    window.location.href = `${API_BASE}/api/auth/login`;
-                  }}
-                >
-                  Log in with Hack Club
-                </button>
-              )}
+              <a href="https://forms.hackclub.com/enclosure" target="_blank">
+              <button
+                className="btn"
+                type="button"
+              >
+                Submit your project →
+              </button>
+              </a>
             </div>
             <div className="buttons-row bottom">
               <a
@@ -298,6 +266,114 @@ function Gallery() {
           </div>
           <div className="lock-overlay">🔒 Coming soon</div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function Shop() {
+  const tiers = [
+    {
+      title: "0–19 hour picks",
+      direction: "normal" as const,
+      items: [
+        { label: "Sticker pack", note: "fresh vinyl", img: "https://placehold.co/200x140?text=Stickers" },
+        { label: "Keycaps", note: "HC set", img: "https://placehold.co/200x140?text=Keycaps" },
+        { label: "3D print credit", note: "$10", img: "https://placehold.co/200x140?text=3D+Print" },
+        { label: "Zombo domain", note: "1yr", img: "https://placehold.co/200x140?text=Domain" },
+        { label: "Hot chocolate", note: "treat", img: "https://placehold.co/200x140?text=Treat" },
+        { label: "HackDucky", note: "fun", img: "https://placehold.co/200x140?text=Ducky" },
+        { label: "Smolāj", note: "squish", img: "https://placehold.co/200x140?text=Plush" },
+        { label: "Pinecil", note: "solder", img: "https://placehold.co/200x140?text=Iron" },
+        { label: "Notebook", note: "grid", img: "https://placehold.co/200x140?text=Notebook" },
+      ],
+    },
+    {
+      title: "20–99 hour prizes",
+      direction: "reverse" as const,
+      items: [
+        { label: "Raspberry Pi 5", note: "48h", img: "https://placehold.co/200x140?text=Pi+5" },
+        { label: "2TB SSD", note: "storage", img: "https://placehold.co/200x140?text=SSD" },
+        { label: "Open Source tix", note: "2026", img: "https://placehold.co/200x140?text=Tickets" },
+        { label: "Raspberry Pi 500", note: "desktop", img: "https://placehold.co/200x140?text=Pi+500" },
+        { label: "Magic Keyboard", note: "wireless", img: "https://placehold.co/200x140?text=Keyboard" },
+        { label: "Flipper Zero", note: "hacks", img: "https://placehold.co/200x140?text=Flipper" },
+        { label: "Yubikey", note: "security", img: "https://placehold.co/200x140?text=YubiKey" },
+        { label: "CMF Buds", note: "audio", img: "https://placehold.co/200x140?text=Earbuds" },
+      ],
+    },
+    {
+      title: "100+ hour prizes",
+      direction: "normal" as const,
+      items: [
+        { label: "Bambu Lab A1 mini", note: "printer", img: "https://placehold.co/200x140?text=Printer" },
+        { label: "Pebble Time 2", note: "classic", img: "https://placehold.co/200x140?text=Watch" },
+        { label: "Proxmark 3", note: "RFID", img: "https://placehold.co/200x140?text=RFID" },
+        { label: "Quest 3", note: "VR", img: "https://placehold.co/200x140?text=VR" },
+        { label: "Mac Mini", note: "desktop", img: "https://placehold.co/200x140?text=Mac+Mini" },
+        { label: "Nothing headphones", note: "ANC", img: "https://placehold.co/200x140?text=Headphones" },
+        { label: "AMS Lite", note: "robot", img: "https://placehold.co/200x140?text=Robot" },
+      ],
+    },
+  ];
+
+  return (
+    <section className="section" id="shop">
+      <div className="container">
+        <h2>SHOP</h2>
+        <div className="section-note">prizes to power up your next build</div>
+        <style>{`
+          .shop-rail { margin: 16px 0 28px; border: 2px dashed var(--border); border-radius: 14px; background: rgba(255,183,3,0.08); overflow: hidden; position: relative; }
+          .shop-rail h4 { margin: 10px 14px; font-family: 'Patrick Hand', cursive; font-size: 1.2rem; color: var(--accent2); }
+          .shop-track { display: flex; gap: 16px; padding: 0 14px 16px 14px; animation: shop-scroll 28s linear infinite; width: max-content; }
+          .shop-rail.reverse .shop-track { animation-direction: reverse; }
+          .shop-card { min-width: 220px; background: var(--card); border: 2px dashed var(--border); border-radius: 14px; padding: 12px; box-shadow: 4px 4px 0 #000; transform: rotate(-1deg); display: grid; gap: 8px; flex: 0 0 auto; }
+          .shop-card:nth-child(even) { transform: rotate(1deg); }
+          .shop-card h5 { margin: 0 0 6px; font-family: 'Patrick Hand', cursive; font-size: 1.1rem; }
+          .shop-card .note { color: var(--muted); font-size: 0.9rem; }
+          .shop-img { width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; border: 2px solid var(--border); background: #1c120d; }
+          .shop-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+          @keyframes shop-scroll { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--scroll-distance, 50%))); } }
+        `}</style>
+        {tiers.map((tier, idx) => {
+          const repeats = 2;
+          const rowItems = Array.from({ length: repeats }, () => tier.items).flat();
+          const scrollDistance = 100 / repeats;
+          return (
+            <div key={tier.title} className={`shop-rail ${tier.direction === "reverse" ? "reverse" : ""}`}>
+              <h4>{tier.title}</h4>
+              <div
+                className="shop-track"
+                style={{
+                  animationDuration: `${14 + idx * 3}s`,
+                  // @ts-expect-error custom property
+                  "--scroll-distance": `${scrollDistance}%`
+                }}
+              >
+                {rowItems.map((item, i) => (
+                  <div key={`${item.label}-${i}`} className="shop-card">
+                    <div className="shop-img" aria-hidden>
+                      <img src={item.img} alt="" />
+                    </div>
+                    <h5>{item.label}</h5>
+                    <div className="note">{item.note}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="buttons-row" style={{ marginTop: 12, justifyContent: "center" }}>
+        <button
+          className="btn"
+          type="button"
+          onClick={() => {
+            window.location.href = "/shop.html";
+          }}
+        >
+          View full shop ↓
+        </button>
       </div>
     </section>
   );
@@ -379,26 +455,6 @@ function Footer() {
 }
 
 export default function App() {
-  const [authed, setAuthed] = useState(false);
-  const [authMessage, setAuthMessage] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("msg") === "auth_required") {
-      setAuthMessage("Cannot access dashboard. Please authenticate.");
-    }
-
-    (async () => {
-      try {
-        // Use profile as a lightweight presence check (no token needed)
-        const res = await fetch(`${API_BASE}/api/auth/profile`);
-        if (res.ok) setAuthed(true);
-      } catch (_err) {
-        setAuthed(false);
-      }
-    })();
-  }, []);
-
   return (
     <>
       <a href="https://hackclub.com/">
@@ -415,8 +471,9 @@ export default function App() {
           alt="Hack Club"
         />
       </a>
-      <Hero authed={authed} authMessage={authMessage} />
+      <Hero />
       <HowItWorks />
+      <Shop />
       <Gallery />
       <Requirements />
       <FAQ />

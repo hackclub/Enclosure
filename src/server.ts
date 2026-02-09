@@ -348,11 +348,11 @@ app.get("/api/auth/callback", async (req, res) => {
     if (needsHackatime && HACKATIME_CLIENT_ID && HACKATIME_CLIENT_SECRET) {
       const loginUrl = new URL("/api/auth/hackatime/login", SERVER_BASE_URL);
       loginUrl.searchParams.set("user_id", identityId as string);
-      loginUrl.searchParams.set("continue", new URL("/dashboard", FRONTEND_BASE_URL).toString());
+      loginUrl.searchParams.set("continue", new URL("/", FRONTEND_BASE_URL).toString());
       return res.redirect(302, loginUrl.toString());
     }
 
-    const redirectUrl = new URL("/dashboard", FRONTEND_BASE_URL);
+    const redirectUrl = new URL("/", FRONTEND_BASE_URL);
     redirectUrl.searchParams.set("eligible", effectiveEligible ? "yes" : "no");
     if (!effectiveEligible) redirectUrl.searchParams.set("msg", "banned");
 
@@ -516,5 +516,5 @@ app.get(/^(?!\/api\/).*/, (req, res) => {
 
 const PORT = Number(process.env.PORT) || 4000;
 app.listen(PORT, () => {
-  console.log(`Dashboard + API running at http://localhost:${PORT}`);
+  console.log(`API running at http://localhost:${PORT}`);
 });
