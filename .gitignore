@@ -1,7 +1,7 @@
 node_modules/
 dist/
 .env
+.env.local
 assets/covers/*.exe
 assets/covers/*.xlsx.env
 /node_modules
-.env.local

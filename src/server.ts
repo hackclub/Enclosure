@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import path from "node:path";
+import fs from "node:fs";
 import { desc, eq } from "drizzle-orm";
 import { db } from "./db.js";
 import { projects, createdProjects, shopItems, user as users } from "./schema.js";
@@ -543,7 +544,29 @@ app.get("/api/auth/profile", async (req, res) => {
 const clientPath = path.join(process.cwd(), "dist");
 const assetsPath = path.join(process.cwd(), "dist", "assets");
 console.log("Serving client from:", clientPath, "assets from:", assetsPath);
+// Custom assets middleware: try explicit disk locations before falling
+// through to the SPA fallback. Some builds place images in `dist/` (e.g.
+// `dist/logo.png` or `dist/covers/...`) while Vite output lives in
+// `dist/assets`. This middleware checks both locations and returns the
+// first matching file to avoid the SPA fallback returning `index.html`.
+app.use("/assets", (req, res, next) => {
+  try {
+    const rel = req.path.replace(/^\/assets/, "");
+    const candidates = [path.join(assetsPath, rel), path.join(clientPath, rel)];
+    for (const c of candidates) {
+      if (fs.existsSync(c) && fs.statSync(c).isFile()) {
+        console.log("serving asset file:", c);
+        return res.sendFile(c);
+      }
+    }
+  } catch (err) {
+    console.error("asset lookup error", String(err));
+  }
+  return next();
+});
 app.use("/assets", express.static(assetsPath));
+// Fallback: also serve files from the dist root under /assets
+app.use("/assets", express.static(clientPath));
 app.use(express.static(clientPath));
 
 // SPA fallback for client-side routing (exclude api and auth)

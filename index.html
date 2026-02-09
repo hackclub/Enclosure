@@ -9,18 +9,6 @@
 </head>
 <body>
   <div id="root"></div>
-  <script>
-    document.getElementById("auth-btn").addEventListener("click", function() {
-      const API_BASE = (() => {
-        const url = new URL(window.location.href);
-        if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
-          return "http://localhost:4000";
-        }
-        return url.origin;
-      })();
-      const continueUrl = encodeURIComponent(window.location.href);
-      window.location.href = `${API_BASE}/api/auth/login?continue=${continueUrl}`;
-    });
-  </script>
+  <!-- Auth button handling is implemented in React; remove inline handlers. -->
 </body>
 </html>
