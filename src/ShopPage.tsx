@@ -137,45 +137,56 @@ export default function ShopPage() {
           <h2>Shop</h2>
           <div className="section-note">Browse the full shop list.</div>
           <div className="grid shop-grid">
-            {loading ? (
-              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 20 }}>Loading shop items…</div>
-            ) : status ? (
-              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 20 }}>
-                <div style={{ marginBottom: 8, color: 'var(--muted)' }}>{status}</div>
-                <button className="btn" onClick={() => loadItems()}>Retry</button>
-              </div>
-            ) : items.length === 0 ? (
-              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 20 }}>
-                No shop items available.
-                <div style={{ marginTop: 10 }}>
-                  <button className="btn" onClick={() => loadItems()}>Reload</button>
-                </div>
-              </div>
-            ) : (
-              items.map((item) => (
-              <div key={item.id} className="card shop-card">
-                <div className="shop-image">
-                  {item.img ? (
-                    <img src={item.img} alt={item.title} />
-                  ) : (
-                    <div className="shop-placeholder">No image</div>
-                  )}
+            {
+              (() => {
+                if (loading) {
+                  return <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 20 }}>Loading shop items…</div>;
+                }
+                if (status) {
+                  return (
+                    <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 20 }}>
+                      <div style={{ marginBottom: 8, color: 'var(--muted)' }}>{status}</div>
+                      <button className="btn" onClick={() => loadItems()}>Retry</button>
+                    </div>
+                  );
+                }
+                if (!items || items.length === 0) {
+                  return (
+                    <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 20 }}>
+                      No shop items available.
+                      <div style={{ marginTop: 10 }}>
+                        <button className="btn" onClick={() => loadItems()}>Reload</button>
+                      </div>
+                    </div>
+                  );
+                }
 
-                  <div className="shop-badge">🍪 35</div>
-                  <div className="shop-bought">12 bought</div>
-                  <button className="shop-fav" aria-label="favorite">☆</button>
-                </div>
+                return items.map((item) => (
+                  <div key={item.id} className="card shop-card">
+                    <div className="shop-image">
+                      {item.img ? (
+                        <img src={item.img} alt={item.title} />
+                      ) : (
+                        <div className="shop-placeholder">No image</div>
+                      )}
 
-                <h3>{item.title}</h3>
-                {item.note ? <p className="muted">{item.note}</p> : null}
+                      <div className="shop-badge">🍪 35</div>
+                      <div className="shop-bought">12 bought</div>
+                      <button className="shop-fav" aria-label="favorite">☆</button>
+                    </div>
 
-                <div style={{ marginTop: 10 }}>
-                  {item.href ? (
-                    <a className="btn" href={item.href} target="_blank" rel="noreferrer">Claim</a>
-                  ) : null}
-                </div>
-              </div>
-              ))}
+                    <h3>{item.title}</h3>
+                    {item.note ? <p className="muted">{item.note}</p> : null}
+
+                    <div style={{ marginTop: 10 }}>
+                      {item.href ? (
+                        <a className="btn" href={item.href} target="_blank" rel="noreferrer">Claim</a>
+                      ) : null}
+                    </div>
+                  </div>
+                ));
+              })()
+            }
           </div>
         </div>
       </section>
