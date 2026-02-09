@@ -170,7 +170,7 @@ export default function ShopPage() {
                         <div className="shop-placeholder">No image</div>
                       )}
 
-                      <div className="shop-bought">12 bought</div>
+                      {/* bought count removed per request */}
                       <button className="shop-fav" aria-label="favorite">☆</button>
                     </div>
 
