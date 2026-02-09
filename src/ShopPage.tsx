@@ -170,7 +170,6 @@ export default function ShopPage() {
                         <div className="shop-placeholder">No image</div>
                       )}
 
-                      <div className="shop-badge">🍪 35</div>
                       <div className="shop-bought">12 bought</div>
                       <button className="shop-fav" aria-label="favorite">☆</button>
                     </div>
@@ -178,11 +177,7 @@ export default function ShopPage() {
                     <h3>{item.title}</h3>
                     {item.note ? <p className="muted">{item.note}</p> : null}
 
-                    <div style={{ marginTop: 10 }}>
-                      {item.href ? (
-                        <a className="btn" href={item.href} target="_blank" rel="noreferrer">Claim</a>
-                      ) : null}
-                    </div>
+                    {/* Claim button removed per request */}
                   </div>
                 ));
               })()
