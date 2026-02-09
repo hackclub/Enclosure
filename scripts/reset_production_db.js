@@ -1,6 +1,6 @@
 const { Client } = require("pg");
 
-const connectionString = "postgresql://neondb_owner:***REMOVED***@ep-silent-butterfly-ai2ol0w7-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+const connectionString = process.env.DATABASE_URL;
 
 const statements = [
   "BEGIN",
@@ -12,6 +12,10 @@ const statements = [
 ];
 
 async function reset() {
+  if (!connectionString) {
+    console.error("Missing DATABASE_URL in environment. Do not hard-code credentials in scripts.");
+    process.exit(1);
+  }
   const client = new Client({ connectionString });
   await client.connect();
   try {
