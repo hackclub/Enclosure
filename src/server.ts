@@ -525,6 +525,9 @@ app.use(express.static(clientPath));
 
 // SPA fallback for client-side routing (exclude api and auth)
 app.get(/^(?!\/api\/).*/, (req, res) => {
+  // Prevent aggressive caching of the SPA shell so clients always load
+  // the latest `index.html` after a deploy.
+  res.setHeader("Cache-Control", "no-store, must-revalidate");
   res.sendFile(path.join(clientPath, "index.html"));
 });
 
