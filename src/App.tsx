@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const API_BASE = (() => {
   const env = import.meta.env.VITE_API_BASE;
@@ -14,13 +14,15 @@ const API_BASE = (() => {
   return "";
 })();
 
+const CACHET_BASE = "https://cachet.dunkirk.sh";
+
 const faqItems = [
   {
     key: "design",
     question: "What exactly do I design?",
     answer: (
       <p>
-        You design a <b>phone or tablet enclosure</b> — basically a case or
+        You design a <b>an enclosure</b> — basically a case or
         cover. It can be protective, decorative, weird, chunky, minimal, or
         cursed. As long as it is an enclosure and printable, you are good.
       </p>
@@ -31,8 +33,8 @@ const faqItems = [
     question: "Which devices are allowed?",
     answer: (
       <p>
-        Most phones and tablets are allowed. If your device is extremely huge or
-        oddly shaped, we may ask you to tweak the design.
+       Any device is allowed. 
+       However, if your device is extremely large or unusually shaped, we may ask you to modify the design.
       </p>
     ),
   },
@@ -43,8 +45,8 @@ const faqItems = [
   },
   {
     key: "hackatime",
-    question: "Is Hackatime required?",
-    answer: <p>No, Hackatime is not compulsory, although it is recommended.</p>,
+    question: "Is Hackatime / Lapse required?",
+    answer: <p>Hackatime / Lapse is required only if you want to earn prizes from shop but if you just want to get your enclosure shipped to you you don't need Hackatime or Lapse to track your time ! </p>,
   },
   {
     key: "format",
@@ -89,7 +91,7 @@ const faqItems = [
 const steps = [
   {
     title: "1. Measure 📏",
-    body: "Measure your phone or tablet carefully. Button cutouts, camera bumps, ports — all that good stuff.",
+    body: "Measure your device carefully. Button cutouts, camera bumps, ports — all that good stuff.",
     tag: "accuracy matters",
   },
   {
@@ -221,9 +223,19 @@ function Hero() {
                   Join Slack🛠️
                 </button>
               </a>
+              <a
+                target="_blank"
+                rel="noreferrer"
+                href="https://workshops.hackclub.com/"
+              >
+                <button className="btn secondary" type="button">
+                  Run a workshop 🎤
+                </button>
+              </a>
             </div>
           </div>
         </div>
+
       </div>
     </section>
   );
@@ -245,6 +257,82 @@ function HowItWorks() {
               <span className="tag">{step.tag}</span>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Paths() {
+  return (
+    <section className="section" id="paths">
+      <div className="container">
+        <h2>Choose Your Path.</h2>
+        <div className="section-note">Choose the path that fits your experience</div>
+        <div className="grid" style={{ gap: 28, alignItems: 'stretch' }}>
+          <div className="card" style={{ padding: '20px 32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 360 }}>
+            <h3 style={{ marginTop: 0 }}>Design & Ship</h3>
+            <p style={{ marginTop: 6 }}>
+              Submit your CAD file and our team will 3D-print and ship the finished enclosure to you. This path does not require Hackatime — ideal if you only want your design printed.
+            </p>
+
+            <div style={{ marginTop: 10 }}>
+              <strong>How it works</strong>
+              <ol style={{ marginTop: 8 }}>
+                <li>Export a clean STP / STEP (or compatible) file.</li>
+                <li>Submit via the short form — include device notes and tolerances.</li>
+                <li>We review for printability and may ask for minor tweaks.</li>
+                <li>We print, finish, and ship (expect typical turnaround of 2–4 weeks).</li>
+              </ol>
+            </div>
+
+            <ul style={{ marginTop: 10, color: 'var(--muted)' }}>
+              <li>No Hackatime required</li>
+              <li>We handle print preparation and shipping</li>
+              <li>Expected turnaround: ~2–4 weeks (varies by volume)</li>
+            </ul>
+
+            <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
+              <a href="https://forms.hackclub.com/enclosure" target="_blank" rel="noreferrer">
+                <button className="btn">Submit design</button>
+              </a>
+              <a href="https://docs.google.com/presentation/d/e/2PACX-1vQpmTW_T9md56kegOqOYb9zAVv_upZSIxsNc59ueinncyolm_nHDyLXihWIRhBKb71LDOq6W_snMWBX/pub?start=false&loop=false&delayms=3000" target="_blank" rel="noreferrer">
+                <button className="btn secondary">Design Guide</button>
+              </a>
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: '20px 32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 360 }}>
+            <h3 style={{ marginTop: 0 }}>Earn Shop Items</h3>
+            <p style={{ marginTop: 6 }}>
+              Track your hours with Hackatime or Lapse to earn access to shop tiers and prizes. Hours are verified through Hackatime and determine which rewards you can claim.
+            </p>
+
+            <div style={{ marginTop: 10 }}>
+              <strong>What to expect</strong>
+              <ol style={{ marginTop: 8 }}>
+                <li>Sign in to Hackatime (or Lapse) and enable tracking for your sessions.</li>
+                <li>Accumulate hours — different tiers unlock different shop rewards.</li>
+                <li>When you reach a tier, you'll be eligible to claim items from the shop.</li>
+                <li>Verification and fulfillment may take 1–3 weeks after claiming.</li>
+              </ol>
+            </div>
+
+            <ul style={{ marginTop: 10, color: 'var(--muted)' }}>
+              <li>Requires Hackatime/Lapse to count hours</li>
+              <li>Hours map to shop tiers (see shop for tier thresholds)</li>
+              <li>Prizes are shipped once verified</li>
+            </ul>
+
+            <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
+              <a href="https://hackatime.hackclub.com" target="_blank" rel="noreferrer">
+                <button className="btn secondary">Track hours</button>
+              </a>
+              <a href="/shop">
+                <button className="btn">View Shop</button>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -369,7 +457,7 @@ function Shop() {
           className="btn"
           type="button"
           onClick={() => {
-            window.location.href = "/shop.html";
+            window.location.href = "/shop";
           }}
         >
           View full shop ↓
@@ -455,8 +543,111 @@ function Footer() {
 }
 
 export default function App() {
+  const [slackAvatarUrl, setSlackAvatarUrl] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [slackId, setSlackId] = useState<string | null>(null);
+  const [showSlackPopup, setShowSlackPopup] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/profile`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { slackId?: string; name?: string | null };
+        if (data?.name) setDisplayName(data.name);
+        if (data?.slackId) setSlackId(data.slackId);
+        if (data?.slackId) setSlackAvatarUrl(`${CACHET_BASE}/users/${data.slackId}/r`);
+      } catch (_err) {}
+    })();
+  }, []);
+
+  // Close popup when clicking outside
+  useEffect(() => {
+    if (!showSlackPopup) return;
+    const handleClick = (e: MouseEvent) => {
+      const popup = document.getElementById('slack-popup');
+      const avatar = document.getElementById('slack-avatar');
+      if (popup && !popup.contains(e.target as Node) && avatar && !avatar.contains(e.target as Node)) {
+        setShowSlackPopup(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showSlackPopup]);
+
+  const initials = (displayName || "HC")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase())
+    .slice(0, 2)
+    .join("") || "HC";
+
   return (
     <>
+      <div
+        id="slack-avatar"
+        aria-label="Signed-in user"
+        style={{
+          position: "fixed",
+          top: 20,
+          right: 20,
+          width: 60,
+          height: 60,
+          borderRadius: "50%",
+          border: "2px solid #000",
+          background: "#f5f5f5",
+          display: "grid",
+          placeItems: "center",
+          overflow: "visible",
+          zIndex: 2000,
+          boxShadow: "4px 4px 0 #000",
+          fontWeight: 700,
+          cursor: "pointer",
+        }}
+        title={displayName || "User"}
+        onClick={() => setShowSlackPopup((v) => !v)}
+      >
+        {slackAvatarUrl ? (
+          <img
+            src={slackAvatarUrl}
+            alt={displayName || "Slack profile"}
+            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+          />
+        ) : (
+          <span style={{ borderRadius: "50%", width: "100%", height: "100%", display: "grid", placeItems: "center" }}>{initials}</span>
+        )}
+        {showSlackPopup && (
+          <div
+            id="slack-popup"
+            style={{
+              position: "fixed",
+              top: 90,
+              right: 20,
+              minWidth: 220,
+              background: "#fff",
+              border: "3px solid #ec3750",
+              borderRadius: 10,
+              boxShadow: "0 8px 24px #0006",
+              padding: "16px 20px",
+              zIndex: 3000,
+              color: "#222",
+              fontSize: "1.05rem",
+              fontWeight: 600,
+              textAlign: "left",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <div style={{ marginBottom: 8, color: '#ec3750', fontWeight: 700 }}>
+              Hackatime Slack ID:
+            </div>
+            <div style={{ wordBreak: "break-all", fontFamily: 'monospace', fontSize: '1.1rem', marginBottom: 10 }}>
+              {slackId ? slackId : "Slack ID not available."}
+            </div>
+          </div>
+        )}
+      </div>
       <a href="https://hackclub.com/">
         <img
           style={{
@@ -473,6 +664,14 @@ export default function App() {
       </a>
       <Hero />
       <HowItWorks />
+      <Paths />
+      <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: - 54 }}>
+        <div style={{ maxWidth: 960, color: 'var(--muted)', textAlign: 'center' }}>
+          <b>
+          You can switch paths at any time — choose the appropriate option on the submission form when you submit your project.
+          </b>
+        </div>
+      </div>
       <Shop />
       <Gallery />
       <Requirements />

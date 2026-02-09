@@ -4,16 +4,9 @@ import cors from "cors";
 import path from "node:path";
 import { desc, eq } from "drizzle-orm";
 import { db } from "./db";
-import { projects, createdProjects, user as users } from "./schema";
+import { projects, createdProjects, shopItems, user as users } from "./schema";
 
-process.on("uncaughtException", (err) => {
-  console.error("[fatal] uncaught exception", err);
-});
-
-process.on("unhandledRejection", (reason) => {
-  console.error("[fatal] unhandled rejection", reason);
-});
-
+// Move all env variable assignments here
 const IDENTITY_HOST = process.env.HC_IDENTITY_HOST || "https://auth.hackclub.com";
 const IDENTITY_CLIENT_ID = process.env.HC_IDENTITY_CLIENT_ID || "";
 const IDENTITY_CLIENT_SECRET = process.env.HC_IDENTITY_CLIENT_SECRET || "";
@@ -36,6 +29,7 @@ const HACKATIME_CLIENT_SECRET = process.env.HACKATIME_CLIENT_SECRET || "";
 const HACKATIME_REDIRECT_URI = process.env.HACKATIME_REDIRECT_URI || "http://localhost:4000/api/auth/hackatime/callback";
 const HACKATIME_SCOPE = process.env.HACKATIME_SCOPE || "profile read";
 const HACKATIME_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+ 
 async function fetchSlackAvatar(opts: { slackId?: string | null; email?: string | null }): Promise<string | undefined> {
   // Try cachet first (no token needed) when we have a Slack user id
   if (opts.slackId) {
@@ -207,6 +201,8 @@ app.get("/api/auth/callback", async (req, res) => {
     if (!tokenRes.ok || !tokenJson.access_token) {
       return res.status(502).json({ error: "token exchange failed", detail: tokenJson });
     }
+
+    console.log("hca auth: true");
 
     const meUrl = new URL("/api/v1/me", IDENTITY_HOST);
     const meRes = await fetch(meUrl, {
@@ -482,21 +478,37 @@ app.get("/api/auth/me", async (req, res) => {
 });
 
 // Convenience: return the most recently seen user (for UI avatar without exposing tokens)
-app.get("/api/auth/profile", async (_req, res) => {
+app.get("/api/auth/profile", async (req, res) => {
   try {
-    const latest = await db.select().from(users).orderBy(desc(users.updatedAt)).limit(1);
-    if (!latest.length) return res.status(404).json({ error: "no user" });
-    const user = latest[0];
+    const auth = req.headers.authorization;
+    const token = auth?.startsWith("Bearer ") ? auth.slice(7) : undefined;
+
+    let userRow;
+    if (token) {
+      const found = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+      if (found.length) userRow = found[0];
+    }
+
+    // fallback to latest seen user for convenience
+    if (!userRow) {
+      const latest = await db.select().from(users).orderBy(desc(users.updatedAt)).limit(1);
+      if (!latest.length) return res.status(404).json({ error: "no user" });
+      userRow = latest[0];
+    }
+
+    const canManageShop = userRow.role === "admin";
     res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      emailVerified: user.emailVerified,
-      image: user.image,
-      slackId: user.slackId,
-      role: user.role,
-      identityLinked: Boolean(user.id),
-      hackatimeLinked: Boolean(user.hackatimeAccessToken),
+      id: userRow.id,
+      name: userRow.name,
+      email: userRow.email,
+      emailVerified: userRow.emailVerified,
+      image: userRow.image,
+      slackId: userRow.slackId,
+      role: userRow.role,
+      canManageShop,
+      identityToken: canManageShop ? userRow.identityToken : null,
+      identityLinked: Boolean(userRow.id),
+      hackatimeLinked: Boolean(userRow.hackatimeAccessToken),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -517,4 +529,44 @@ app.get(/^(?!\/api\/).*/, (req, res) => {
 const PORT = Number(process.env.PORT) || 4000;
 app.listen(PORT, () => {
   console.log(`API running at http://localhost:${PORT}`);
+});
+
+// Add this after all app.use and before any catch-all or app.listen
+app.get("/api/shop-items", async (req, res) => {
+  try {
+    const items = await db.select().from(shopItems).orderBy(desc(shopItems.id));
+    res.json(items);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).send(`Failed to load shop items: ${message}`);
+  }
+});
+
+// Admin-only: create a shop item. Authorize with Bearer identity token.
+app.post("/api/shop-items", async (req, res) => {
+  try {
+    const auth = req.headers.authorization || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+    if (!token) return res.status(401).send("Missing Authorization Bearer token");
+
+    const [u] = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+    if (!u) return res.status(401).send("Invalid token");
+    if (u.role !== "admin") return res.status(403).send("Admin access required");
+
+    const { title, note, img, href } = req.body || {};
+    if (!title || typeof title !== "string") return res.status(400).send("title is required");
+
+    const [created] = await db.insert(shopItems).values({
+      title: title.trim(),
+      note: typeof note === "string" ? note.trim() : null,
+      img: typeof img === "string" ? img.trim() : null,
+      href: typeof href === "string" ? href.trim() : null,
+      createdAt: new Date()
+    }).returning();
+
+    res.status(201).json(created);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).send(`Failed to create shop item: ${message}`);
+  }
 });

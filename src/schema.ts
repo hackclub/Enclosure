@@ -65,3 +65,12 @@ export const rejectedProjects = pgTable("rejected_projects", {
   email: text("email").notNull(),
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow()
 });
+
+export const shopItems = pgTable("shop_items", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  note: text("note"),
+  img: text("img"),
+  href: text("href"),
+  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow()
+});
