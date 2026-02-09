@@ -99,6 +99,17 @@ app.get("/__debug_dist", async (_req, res) => {
   }
 });
 
+app.get("/__debug_assets", async (_req, res) => {
+  try {
+    const fs = await import("node:fs/promises");
+    const assetsDir = path.join(process.cwd(), "dist", "assets");
+    const files = await fs.readdir(assetsDir);
+    res.json({ assetsDir, files });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 app.get("/api/projects", async (_req, res) => {
   const rows = await db.select().from(projects).orderBy(desc(projects.createdAt));
   res.json(rows);
