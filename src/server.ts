@@ -515,11 +515,11 @@ app.get("/api/auth/profile", async (req, res) => {
   }
 });
 
-import { fileURLToPath } from 'node:url';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const clientPath = path.join(__dirname, "..", "dist");
-const assetsPath = path.join(__dirname, "..", "assets");
+// Use process.cwd() to reliably reference the built `dist` directory
+// regardless of how the server is executed (works on Heroku).
+const clientPath = path.join(process.cwd(), "dist");
+const assetsPath = path.join(process.cwd(), "dist", "assets");
+console.log("Serving client from:", clientPath, "assets from:", assetsPath);
 app.use("/assets", express.static(assetsPath));
 app.use(express.static(clientPath));
 
