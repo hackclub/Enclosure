@@ -8,7 +8,15 @@ export default defineConfig({
   publicDir: "assets",
   server: {
     port: 5713,
-    host: true
+    host: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+        ws: false
+      }
+    }
   },
   resolve: {
     alias: {

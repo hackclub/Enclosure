@@ -553,24 +553,18 @@ export default function App() {
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/api/auth/profile`, { credentials: "include" });
+        if (res.status === 401) {
+          // Not authenticated: redirect the browser to the identity provider
+          const cont = window.location.origin;
+          window.location.href = `${API_BASE}/api/auth/login?continue=${encodeURIComponent(cont)}&force=1`;
+          return;
+        }
         if (!res.ok) return;
         const data = (await res.json()) as { slackId?: string; name?: string | null; credits?: number };
         if (data?.name) setDisplayName(data.name);
         if (data?.slackId) setSlackId(data.slackId);
         if (data?.slackId) setSlackAvatarUrl(`${CACHET_BASE}/users/${data.slackId}/r`);
         if (typeof data?.credits === "number") setCredits(data.credits);
-
-        // Ensure login is session-only: call server to convert persistent
-        // auth cookies into session cookies. Only do this once per browser
-        // session to avoid repeated Set-Cookie traffic.
-        try {
-          if (typeof window !== "undefined" && !window.sessionStorage.getItem("sessionized")) {
-            await fetch(`${API_BASE}/api/auth/sessionize`, { method: "POST", credentials: "include" });
-            window.sessionStorage.setItem("sessionized", "1");
-          }
-        } catch (_e) {
-          // ignore
-        }
       } catch (_err) {}
     })();
   }, []);
@@ -598,6 +592,7 @@ export default function App() {
 
   return (
     <>
+      
       <div
         id="slack-avatar"
         aria-label="Signed-in user"

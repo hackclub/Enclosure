@@ -7,6 +7,8 @@ export const user = pgTable("user", {
     emailVerified: boolean("email_verified").default(false).notNull(),
     image: text("image"),
     slackId: text("slack_id"),
+    // New: shop credits balance for the user
+    credits: text("credits"),
     role: userRole("role").default("member"),
     verificationStatus: text("verification_status"),
     identityToken: text("identity_token"),
@@ -63,5 +65,12 @@ export const shopItems = pgTable("shop_items", {
     note: text("note"),
     img: text("img"),
     href: text("href"),
+    createdAt: timestamp("created_at", { withTimezone: false }).defaultNow()
+});
+export const shopTransactions = pgTable("shop_transactions", {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    amount: text("amount").notNull(),
+    reason: text("reason"),
     createdAt: timestamp("created_at", { withTimezone: false }).defaultNow()
 });
