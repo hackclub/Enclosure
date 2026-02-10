@@ -264,11 +264,32 @@ app.patch("/api/projects/:id/status", async (req, res) => {
 
 app.get("/api/auth/login", (_req, res) => {
   if (!IDENTITY_CLIENT_ID) return res.status(500).send("Missing HC_IDENTITY_CLIENT_ID");
+  // Allow callers to pass a `continue` query param (frontend URL to return to)
+  // which we encode into the OAuth `state` so the callback can redirect
+  // back to the original requester. Also support `force=1` to add
+  // `prompt=login` which forces the identity provider to re-prompt.
+  const continueUrl = String((_req.query && (_req.query.continue || _req.query.cont)) || "");
+  const force = String((_req.query && _req.query.force) || "");
+
   const url = new URL("/oauth/authorize", IDENTITY_HOST);
   url.searchParams.set("client_id", IDENTITY_CLIENT_ID);
   url.searchParams.set("redirect_uri", IDENTITY_REDIRECT_URI);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", "profile email name slack_id verification_status");
+
+  if (continueUrl) {
+    try {
+      const payload = Buffer.from(JSON.stringify({ cont: continueUrl }), "utf8").toString("base64url");
+      url.searchParams.set("state", payload);
+    } catch (e) {
+      // ignore invalid continue
+    }
+  }
+
+  if (force === "1") {
+    url.searchParams.set("prompt", "login");
+  }
+
   res.redirect(url.toString());
 });
 
@@ -283,6 +304,7 @@ app.get("/api/auth/logout", (_req, res) => {
 
 app.get("/api/auth/callback", async (req, res) => {
   const code = req.query.code as string | undefined;
+  const rawState = req.query.state as string | undefined;
   if (!code) return res.status(400).send("Missing code");
   if (!IDENTITY_CLIENT_ID || !IDENTITY_CLIENT_SECRET) {
     return res.status(500).send("Missing client id/secret");
@@ -295,8 +317,23 @@ app.get("/api/auth/callback", async (req, res) => {
       redirect_uri: IDENTITY_REDIRECT_URI,
       client_id: IDENTITY_CLIENT_ID,
       client_secret: IDENTITY_CLIENT_SECRET
-    });
-    const tokenRes = await fetch(tokenUrl, {
+    // If we received a `state` payload with a `cont` value, prefer that
+    // continue URL for the final redirect. This allows callers of
+    // `/api/auth/login?continue=...` to return to a local dev frontend.
+    let finalContinue = FRONTEND_BASE_URL;
+    if (rawState) {
+      try {
+        const parsed = JSON.parse(Buffer.from(rawState, "base64url").toString("utf8"));
+        if (parsed && typeof parsed.cont === "string" && parsed.cont.length) {
+          finalContinue = parsed.cont;
+        }
+      } catch (e) {
+        // ignore parse errors and fall back to FRONTEND_BASE_URL
+      }
+    }
+
+    const redirectUrl = new URL("/", finalContinue);
+    res.redirect(302, redirectUrl.toString());
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body
