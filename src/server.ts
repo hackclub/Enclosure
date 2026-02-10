@@ -1,6 +1,5 @@
 import "dotenv/config";
 import express from "express";
-import compression from "compression";
 import cors from "cors";
 import path from "node:path";
 import fs from "node:fs";
@@ -12,7 +11,11 @@ import { projects, createdProjects, shopItems, user as users, shopTransactions }
 const IDENTITY_HOST = process.env.HC_IDENTITY_HOST || "https://auth.hackclub.com";
 const IDENTITY_CLIENT_ID = process.env.HC_IDENTITY_CLIENT_ID || "";
 const IDENTITY_CLIENT_SECRET = process.env.HC_IDENTITY_CLIENT_SECRET || "";
-const IDENTITY_REDIRECT_URI = process.env.HC_IDENTITY_REDIRECT_URI || "http://localhost:4000/api/auth/callback";
+let IDENTITY_REDIRECT_URI = process.env.HC_IDENTITY_REDIRECT_URI || "http://localhost:4000/api/auth/callback";
+// For local development force the localhost callback unless explicitly running in production
+if (process.env.NODE_ENV !== 'production') {
+  IDENTITY_REDIRECT_URI = "http://localhost:4000/api/auth/callback";
+}
 const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || "http://localhost:5713";
 const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL || "http://localhost:4000";
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || (() => {
@@ -117,8 +120,6 @@ async function fetchSlackAvatar(opts: { slackId?: string | null; email?: string 
 }
 
 const app = express();
-// Enable HTTP compression for faster transfer of JS/CSS/HTML
-app.use(compression());
 const corsOptions = process.env.NODE_ENV === 'production'
   ? { origin: FRONTEND_BASE_URL, credentials: true }
   : { origin: true, credentials: true };
@@ -126,8 +127,35 @@ const corsOptions = process.env.NODE_ENV === 'production'
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Helper: extract bearer token from Authorization header or `hc_identity` cookie
+function extractToken(req: express.Request): string | undefined {
+  const auth = req.headers.authorization;
+  if (typeof auth === "string" && auth.startsWith("Bearer ")) return auth.slice(7);
+  const raw = req.headers.cookie || "";
+  const pairs = String(raw).split(/;\s*/).filter(Boolean);
+  for (const p of pairs) {
+    const idx = p.indexOf("=");
+    if (idx === -1) continue;
+    const k = p.slice(0, idx);
+    const v = p.slice(idx + 1);
+    if (k === "hc_identity") return decodeURIComponent(v);
+  }
+  return undefined;
+}
+
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
+});
+
+// Debug: show cookies and auth extraction for troubleshooting
+app.get("/__debug_cookies", (req, res) => {
+  try {
+    const raw = req.headers.cookie || "";
+    const token = extractToken(req);
+    res.json({ cookieHeader: raw, extractedToken: token ?? null, headers: req.headers });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
 });
 
 // Debug endpoint: list files under the built `dist` directory (temporary)
@@ -262,14 +290,11 @@ app.patch("/api/projects/:id/status", async (req, res) => {
   res.json(updated);
 });
 
-app.get("/api/auth/login", (_req, res) => {
+app.get("/api/auth/login", (req, res) => {
   if (!IDENTITY_CLIENT_ID) return res.status(500).send("Missing HC_IDENTITY_CLIENT_ID");
-  // Allow callers to pass a `continue` query param (frontend URL to return to)
-  // which we encode into the OAuth `state` so the callback can redirect
-  // back to the original requester. Also support `force=1` to add
-  // `prompt=login` which forces the identity provider to re-prompt.
-  const continueUrl = String((_req.query && (_req.query.continue || _req.query.cont)) || "");
-  const force = String((_req.query && _req.query.force) || "");
+  // Accept `continue` or `cont` to return the user after login, and `force=1` to add prompt=login
+  const continueUrl = String((req.query && (req.query.continue || req.query.cont)) || "");
+  const force = String((req.query && req.query.force) || "");
 
   const url = new URL("/oauth/authorize", IDENTITY_HOST);
   url.searchParams.set("client_id", IDENTITY_CLIENT_ID);
@@ -286,9 +311,7 @@ app.get("/api/auth/login", (_req, res) => {
     }
   }
 
-  if (force === "1") {
-    url.searchParams.set("prompt", "login");
-  }
+  if (force === "1") url.searchParams.set("prompt", "login");
 
   res.redirect(url.toString());
 });
@@ -318,14 +341,13 @@ app.get("/api/auth/callback", async (req, res) => {
       client_id: IDENTITY_CLIENT_ID,
       client_secret: IDENTITY_CLIENT_SECRET
     });
-
     const tokenRes = await fetch(tokenUrl, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body
     });
-
     const tokenJson = await tokenRes.json();
+    console.log('[auth callback] tokenJson:', tokenJson);
     if (!tokenRes.ok || !tokenJson.access_token) {
       return res.status(502).json({ error: "token exchange failed", detail: tokenJson });
     }
@@ -343,6 +365,7 @@ app.get("/api/auth/callback", async (req, res) => {
     }
 
     const meJson = (await meRes.json()) as { identity?: Record<string, unknown> };
+    console.log('[auth callback] meJson identity keys:', Object.keys(meJson.identity || {}));
     const identity = meJson.identity || {};
     const identityId = typeof (identity as { id?: unknown }).id === "string" ? (identity as { id?: unknown }).id : undefined;
     const identityEmail = typeof (identity as { email?: unknown }).email === "string"
@@ -493,6 +516,33 @@ app.get("/api/auth/callback", async (req, res) => {
     redirectUrl.searchParams.set("eligible", effectiveEligible ? "yes" : "no");
     if (!effectiveEligible) redirectUrl.searchParams.set("msg", "banned");
 
+    // Set auth cookies so the browser can authenticate next requests.
+    try {
+      const secure = process.env.NODE_ENV === "production";
+      const maxAge = 90 * 24 * 60 * 60 * 1000; // 90 days
+      const sameSiteVal: "lax" | "none" = secure ? "none" : "lax";
+      const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+      const cookieOpts: Record<string, unknown> = {
+        httpOnly: true,
+        sameSite: sameSiteVal,
+        secure: secure,
+        path: "/",
+        maxAge,
+      };
+      if (cookieDomain) (cookieOpts as any).domain = cookieDomain;
+
+      res.cookie("hc_identity", String(tokenJson.access_token), cookieOpts);
+      console.log('[auth callback] set hc_identity cookie');
+
+      // session cookie: session-only (no persistent maxAge)
+      const sessionOpts = { ...cookieOpts } as Record<string, unknown>;
+      delete (sessionOpts as any).maxAge;
+      res.cookie("session", "1", sessionOpts);
+      console.log('[auth callback] set session cookie');
+    } catch (e) {
+      console.error("failed to set auth cookies", String(e));
+    }
+
     return res.redirect(302, redirectUrl.toString());
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -598,8 +648,7 @@ app.get("/api/auth/hackatime/callback", async (req, res) => {
 });
 
 app.get("/api/auth/me", async (req, res) => {
-  const auth = req.headers.authorization;
-  const token = auth?.startsWith("Bearer ") ? auth.slice(7) : undefined;
+  const token = extractToken(req);
   if (!token) return res.status(401).json({ error: "missing bearer token" });
   try {
     const meUrl = new URL("/api/v1/me", IDENTITY_HOST);
@@ -621,8 +670,7 @@ app.get("/api/auth/me", async (req, res) => {
 // Convenience: return the most recently seen user (for UI avatar without exposing tokens)
 app.get("/api/auth/profile", async (req, res) => {
   try {
-    const auth = req.headers.authorization;
-    const token = auth?.startsWith("Bearer ") ? auth.slice(7) : undefined;
+    const token = extractToken(req);
 
     let userRow;
     if (token) {
@@ -630,9 +678,7 @@ app.get("/api/auth/profile", async (req, res) => {
       if (found.length) userRow = found[0];
     }
 
-    // Do not auto-fallback to the most-recent user. If there is no
-    // authorization token or matching user, treat the request as
-    // unauthenticated so clients don't appear "logged in" automatically.
+    // Do not auto-fallback to the most-recent user. Treat as unauthenticated when no token.
     if (!userRow) {
       return res.status(401).json({ error: "not authenticated" });
     }
@@ -660,43 +706,6 @@ app.get("/api/auth/profile", async (req, res) => {
   }
 });
 
-// Make existing auth cookies session-only (no Expires/Max-Age).
-// This endpoint reads common auth cookies and re-sets them without
-// persistence so the login lasts only for the browser session.
-app.post("/api/auth/sessionize", async (req, res) => {
-  try {
-    const raw = req.headers.cookie || "";
-    const pairs = raw.split(/;\s*/).filter(Boolean);
-    const map: Record<string, string> = {};
-    for (const p of pairs) {
-      const idx = p.indexOf("=");
-      if (idx === -1) continue;
-      const k = p.slice(0, idx);
-      const v = p.slice(idx + 1);
-      map[k] = v;
-    }
-
-    const cookieNames = ["hc_identity", "session", "hackatime_token"];
-    const secure = process.env.NODE_ENV === "production";
-    const set: string[] = [];
-    for (const name of cookieNames) {
-      const val = map[name];
-      if (val) {
-        // Re-set as a session cookie (no Max-Age/Expires)
-        let attr = `${name}=${val}; Path=/; HttpOnly; SameSite=Lax`;
-        if (secure) attr += "; Secure";
-        set.push(attr);
-      }
-    }
-
-    if (set.length) res.setHeader("Set-Cookie", set);
-    return res.json({ ok: true, updated: set.length });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return res.status(500).json({ error: "sessionize failed", detail: message });
-  }
-});
-
 // Use process.cwd() to reliably reference the built `dist` directory
 // regardless of how the server is executed (works on Heroku).
 const clientPath = path.join(process.cwd(), "dist");
@@ -714,8 +723,6 @@ app.use("/assets", (req, res, next) => {
     for (const c of candidates) {
       if (fs.existsSync(c) && fs.statSync(c).isFile()) {
         console.log("serving asset file:", c);
-        // Serve with long cache for hashed assets
-        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
         return res.sendFile(c);
       }
     }
@@ -724,21 +731,66 @@ app.use("/assets", (req, res, next) => {
   }
   return next();
 });
-// Serve hashed assets with long cache TTL
-app.use("/assets", express.static(assetsPath, { maxAge: '1y', immutable: true }));
-// Fallback: also serve files from the dist root under /assets (long cache)
-app.use("/assets", express.static(clientPath, { maxAge: '1y', immutable: true }));
-// Serve other static files but don't let express serve index.html directly
-// so we control caching headers for the SPA shell in the fallback.
-app.use(express.static(clientPath, { index: false }));
+app.use("/assets", express.static(assetsPath));
+// Fallback: also serve files from the dist root under /assets
+app.use("/assets", express.static(clientPath));
+app.use(express.static(clientPath));
 
 // SPA fallback for client-side routing (exclude api and auth)
+// Dev-only API endpoint to set test cookies (inspect Set-Cookie headers)
+if (process.env.NODE_ENV !== "production") {
+  app.get("/api/__dev_set_cookies", (_req, res) => {
+    try {
+      const secure = process.env.NODE_ENV === "production";
+      const sameSiteVal: "lax" | "none" = secure ? "none" : "lax";
+      const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+      const cookieOpts: Record<string, unknown> = {
+        httpOnly: true,
+        sameSite: sameSiteVal,
+        secure,
+        path: "/",
+      };
+      if (cookieDomain) (cookieOpts as any).domain = cookieDomain;
+      res.cookie("hc_identity", "dev-token-123", cookieOpts);
+      const sessionOpts = { ...cookieOpts } as Record<string, unknown>;
+      delete (sessionOpts as any).maxAge;
+      res.cookie("session", "1", sessionOpts);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+}
+
 app.get(/^(?!\/api\/).*/, (req, res) => {
   // Prevent aggressive caching of the SPA shell so clients always load
   // the latest `index.html` after a deploy.
   res.setHeader("Cache-Control", "no-store, must-revalidate");
   res.sendFile(path.join(clientPath, "index.html"));
 });
+
+// Development-only: quickly set test cookies so we can inspect Set-Cookie flags
+if (process.env.NODE_ENV !== "production") {
+  app.get("/__dev_set_cookies", (_req, res) => {
+    try {
+      const secure = process.env.NODE_ENV === "production";
+      const sameSiteVal: "lax" | "none" = secure ? "none" : "lax";
+      const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+      const cookieOpts: Record<string, unknown> = {
+        httpOnly: true,
+        sameSite: sameSiteVal,
+        secure,
+        path: "/",
+      };
+      if (cookieDomain) (cookieOpts as any).domain = cookieDomain;
+      res.cookie("hc_identity", "dev-token-123", cookieOpts);
+      res.cookie("session", "1", cookieOpts);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+}
 
 const PORT = Number(process.env.PORT) || 4000;
 app.listen(PORT, () => {
