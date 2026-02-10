@@ -134,6 +134,11 @@ export default function ShopPage() {
     <main>
       <section className="section" id="shop">
         <div className="container">
+          <div style={{ marginBottom: 12 }}>
+            <a className="btn secondary" href="/">
+              ← Back to main page
+            </a>
+          </div>
           <h2>Shop</h2>
           <div className="section-note">Browse the full shop list.</div>
           <div className="grid shop-grid">
