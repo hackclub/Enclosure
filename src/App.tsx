@@ -546,6 +546,7 @@ export default function App() {
   const [slackAvatarUrl, setSlackAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [slackId, setSlackId] = useState<string | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
   const [showSlackPopup, setShowSlackPopup] = useState(false);
 
   useEffect(() => {
@@ -553,10 +554,11 @@ export default function App() {
       try {
         const res = await fetch(`${API_BASE}/api/auth/profile`, { credentials: "include" });
         if (!res.ok) return;
-        const data = (await res.json()) as { slackId?: string; name?: string | null };
+        const data = (await res.json()) as { slackId?: string; name?: string | null; credits?: number };
         if (data?.name) setDisplayName(data.name);
         if (data?.slackId) setSlackId(data.slackId);
         if (data?.slackId) setSlackAvatarUrl(`${CACHET_BASE}/users/${data.slackId}/r`);
+        if (typeof data?.credits === "number") setCredits(data.credits);
       } catch (_err) {}
     })();
   }, []);
@@ -607,6 +609,27 @@ export default function App() {
         title={displayName || "User"}
         onClick={() => setShowSlackPopup((v) => !v)}
       >
+        {/* Credits display to the left of the avatar */}
+        {typeof credits === "number" ? (
+          <div
+            style={{
+              position: "absolute",
+              right: 76,
+              top: 12,
+              background: "var(--card)",
+              padding: "6px 10px",
+              borderRadius: 8,
+              border: "2px solid #000",
+              fontWeight: 700,
+              color: "#111",
+              boxShadow: "2px 2px 0 #000",
+              zIndex: 2100,
+              fontSize: 14,
+            }}
+          >
+            {credits} credits
+          </div>
+        ) : null}
         {slackAvatarUrl ? (
           <img
             src={slackAvatarUrl}

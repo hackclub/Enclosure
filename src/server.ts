@@ -610,6 +610,9 @@ app.get("/api/auth/profile", async (req, res) => {
       identityToken: canManageShop ? userRow.identityToken : null,
       identityLinked: Boolean(userRow.id),
       hackatimeLinked: Boolean(userRow.hackatimeAccessToken),
+      // Expose the user's current credits (number). Stored as text in DB,
+      // so coerce to Number and default to 0 if missing.
+      credits: Number(userRow.credits ?? 0),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
