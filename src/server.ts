@@ -36,15 +36,14 @@ const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || "";
 const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME || "";
 const AIRTABLE_EMAIL_FIELD = process.env.AIRTABLE_EMAIL_FIELD || "Email";
 const AIRTABLE_HOURS_FIELD = process.env.AIRTABLE_HOURS_FIELD || "Hours";
-// Optional approval field name + expected value. If set, the Airtable record must
-// indicate approval before credits are awarded.
 const AIRTABLE_APPROVAL_FIELD = process.env.AIRTABLE_APPROVAL_FIELD || "Approved";
 const AIRTABLE_APPROVAL_VALUE = (process.env.AIRTABLE_APPROVAL_VALUE || "yes").toLowerCase();
 const HOURS_TO_CREDITS = Number(process.env.HOURS_TO_CREDITS || "1");
 
-async function fetchAirtableHoursByEmail(email) {
-  if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID || !AIRTABLE_TABLE_NAME || !email)
-    return null;
+// Fetch the first matching Airtable record for the given email and return
+// both the hours field (number) and whether the record is approved.
+async function fetchAirtableRecordByEmail(email) {
+  if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID || !AIRTABLE_TABLE_NAME || !email) return null;
   try {
     const q = `filterByFormula=${encodeURIComponent(`{${AIRTABLE_EMAIL_FIELD}}='${email.replace("'","\\'")}'`)}`;
     const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}?${q}`;
@@ -54,23 +53,11 @@ async function fetchAirtableHoursByEmail(email) {
     if (!j.records || !j.records.length) return null;
     const rec = j.records[0];
     const fields = rec.fields || {};
-
-    // If an approval field is configured, verify it matches expected value.
-    if (AIRTABLE_APPROVAL_FIELD && AIRTABLE_APPROVAL_FIELD in fields) {
-      const val = fields[AIRTABLE_APPROVAL_FIELD];
-      const ok = (() => {
-        if (typeof val === 'boolean') return val === true;
-        if (typeof val === 'number') return val !== 0;
-        if (typeof val === 'string') return val.trim().toLowerCase() === AIRTABLE_APPROVAL_VALUE;
-        // fallback: treat presence as truthy
-        return Boolean(val);
-      })();
-      if (!ok) return null; // not approved
-    }
-
-    const hours = fields[AIRTABLE_HOURS_FIELD];
-    const n = Number(hours);
-    return Number.isFinite(n) ? n : null;
+    const rawHours = fields[AIRTABLE_HOURS_FIELD];
+    const hours = Number(rawHours);
+    const approvedRaw = fields[AIRTABLE_APPROVAL_FIELD];
+    const approved = approvedRaw !== undefined && approvedRaw !== null && String(approvedRaw).toLowerCase() === AIRTABLE_APPROVAL_VALUE;
+    return { hours: Number.isFinite(hours) ? hours : null, approved };
   } catch (err) {
     console.error('airtable lookup failed', String(err));
     return null;
@@ -231,24 +218,29 @@ app.patch("/api/projects/:id/status", async (req, res) => {
       const found = await db.select().from(createdProjects).where(eq(createdProjects.name, updated.name)).limit(1);
       const email = found[0]?.email ?? null;
       if (email) {
-        const hours = await fetchAirtableHoursByEmail(email);
-        if (hours !== null) {
-          const credits = Math.max(0, Math.floor(hours * HOURS_TO_CREDITS));
-          if (credits > 0) {
-            // Find a user row by email
-            const [u] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-            if (u) {
-              const prev = Number(u.credits ?? 0) || 0;
-              const next = prev + credits;
-              await db.update(users).set({ credits: String(next) }).where(eq(users.id, u.id));
-              await db.insert(shopTransactions).values({ userId: u.id, amount: String(credits), reason: `Payout for project ${updated.id}`, createdAt: new Date() });
-              console.log('Credited user', email, credits, 'hours=', hours);
-            } else {
-              console.log('No user found for email, skipping credit:', email);
+        const rec = await fetchAirtableRecordByEmail(email);
+        if (rec) {
+          if (!rec.approved) {
+            console.log('Airtable record not approved, skipping credit for', email);
+          } else if (rec.hours === null) {
+            console.log('Airtable record missing hours for', email);
+          } else {
+            const credits = Math.max(0, Math.floor(rec.hours * HOURS_TO_CREDITS));
+            if (credits > 0) {
+              const [u] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+              if (u) {
+                const prev = Number(u.credits ?? 0) || 0;
+                const next = prev + credits;
+                await db.update(users).set({ credits: String(next) }).where(eq(users.id, u.id));
+                await db.insert(shopTransactions).values({ userId: u.id, amount: String(credits), reason: `Payout for project ${updated.id}`, createdAt: new Date() });
+                console.log('Credited user', email, credits, 'hours=', rec.hours);
+              } else {
+                console.log('No user found for email, skipping credit:', email);
+              }
             }
           }
         } else {
-          console.log('No airtable hours found for', email);
+          console.log('No airtable record found for', email);
         }
       } else {
         console.log('No submission record found matching project name, skipping payout for project', updated.id);
