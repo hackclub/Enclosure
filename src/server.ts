@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import compression from "compression";
 import cors from "cors";
 import path from "node:path";
 import fs from "node:fs";
@@ -116,6 +117,8 @@ async function fetchSlackAvatar(opts: { slackId?: string | null; email?: string 
 }
 
 const app = express();
+// Enable HTTP compression for faster transfer of JS/CSS/HTML
+app.use(compression());
 const corsOptions = process.env.NODE_ENV === 'production'
   ? { origin: FRONTEND_BASE_URL, credentials: true }
   : { origin: true, credentials: true };
@@ -637,6 +640,8 @@ app.use("/assets", (req, res, next) => {
     for (const c of candidates) {
       if (fs.existsSync(c) && fs.statSync(c).isFile()) {
         console.log("serving asset file:", c);
+        // Serve with long cache for hashed assets
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
         return res.sendFile(c);
       }
     }
@@ -645,10 +650,13 @@ app.use("/assets", (req, res, next) => {
   }
   return next();
 });
-app.use("/assets", express.static(assetsPath));
-// Fallback: also serve files from the dist root under /assets
-app.use("/assets", express.static(clientPath));
-app.use(express.static(clientPath));
+// Serve hashed assets with long cache TTL
+app.use("/assets", express.static(assetsPath, { maxAge: '1y', immutable: true }));
+// Fallback: also serve files from the dist root under /assets (long cache)
+app.use("/assets", express.static(clientPath, { maxAge: '1y', immutable: true }));
+// Serve other static files but don't let express serve index.html directly
+// so we control caching headers for the SPA shell in the fallback.
+app.use(express.static(clientPath, { index: false }));
 
 // SPA fallback for client-side routing (exclude api and auth)
 app.get(/^(?!\/api\/).*/, (req, res) => {
