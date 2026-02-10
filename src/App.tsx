@@ -559,6 +559,18 @@ export default function App() {
         if (data?.slackId) setSlackId(data.slackId);
         if (data?.slackId) setSlackAvatarUrl(`${CACHET_BASE}/users/${data.slackId}/r`);
         if (typeof data?.credits === "number") setCredits(data.credits);
+
+        // Ensure login is session-only: call server to convert persistent
+        // auth cookies into session cookies. Only do this once per browser
+        // session to avoid repeated Set-Cookie traffic.
+        try {
+          if (typeof window !== "undefined" && !window.sessionStorage.getItem("sessionized")) {
+            await fetch(`${API_BASE}/api/auth/sessionize`, { method: "POST", credentials: "include" });
+            window.sessionStorage.setItem("sessionized", "1");
+          }
+        } catch (_e) {
+          // ignore
+        }
       } catch (_err) {}
     })();
   }, []);

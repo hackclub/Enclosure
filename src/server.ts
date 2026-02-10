@@ -623,6 +623,43 @@ app.get("/api/auth/profile", async (req, res) => {
   }
 });
 
+// Make existing auth cookies session-only (no Expires/Max-Age).
+// This endpoint reads common auth cookies and re-sets them without
+// persistence so the login lasts only for the browser session.
+app.post("/api/auth/sessionize", async (req, res) => {
+  try {
+    const raw = req.headers.cookie || "";
+    const pairs = raw.split(/;\s*/).filter(Boolean);
+    const map: Record<string, string> = {};
+    for (const p of pairs) {
+      const idx = p.indexOf("=");
+      if (idx === -1) continue;
+      const k = p.slice(0, idx);
+      const v = p.slice(idx + 1);
+      map[k] = v;
+    }
+
+    const cookieNames = ["hc_identity", "session", "hackatime_token"];
+    const secure = process.env.NODE_ENV === "production";
+    const set: string[] = [];
+    for (const name of cookieNames) {
+      const val = map[name];
+      if (val) {
+        // Re-set as a session cookie (no Max-Age/Expires)
+        let attr = `${name}=${val}; Path=/; HttpOnly; SameSite=Lax`;
+        if (secure) attr += "; Secure";
+        set.push(attr);
+      }
+    }
+
+    if (set.length) res.setHeader("Set-Cookie", set);
+    return res.json({ ok: true, updated: set.length });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return res.status(500).json({ error: "sessionize failed", detail: message });
+  }
+});
+
 // Use process.cwd() to reliably reference the built `dist` directory
 // regardless of how the server is executed (works on Heroku).
 const clientPath = path.join(process.cwd(), "dist");
