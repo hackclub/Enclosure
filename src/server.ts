@@ -36,6 +36,10 @@ const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || "";
 const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME || "";
 const AIRTABLE_EMAIL_FIELD = process.env.AIRTABLE_EMAIL_FIELD || "Email";
 const AIRTABLE_HOURS_FIELD = process.env.AIRTABLE_HOURS_FIELD || "Hours";
+// If your Airtable stores a separate "approved hours" field that differs
+// from total hours, set `AIRTABLE_APPROVED_HOURS_FIELD`. Otherwise we
+// fall back to `AIRTABLE_HOURS_FIELD`.
+const AIRTABLE_APPROVED_HOURS_FIELD = process.env.AIRTABLE_APPROVED_HOURS_FIELD || AIRTABLE_HOURS_FIELD;
 const AIRTABLE_APPROVAL_FIELD = process.env.AIRTABLE_APPROVAL_FIELD || "Approved";
 const AIRTABLE_APPROVAL_VALUE = (process.env.AIRTABLE_APPROVAL_VALUE || "yes").toLowerCase();
 const HOURS_TO_CREDITS = Number(process.env.HOURS_TO_CREDITS || "1");
@@ -53,7 +57,9 @@ async function fetchAirtableRecordByEmail(email) {
     if (!j.records || !j.records.length) return null;
     const rec = j.records[0];
     const fields = rec.fields || {};
-    const rawHours = fields[AIRTABLE_HOURS_FIELD];
+    // Prefer the approved-hours field (if provided) because approved hours
+    // may differ from total hours in Airtable.
+    const rawHours = fields[AIRTABLE_APPROVED_HOURS_FIELD] ?? fields[AIRTABLE_HOURS_FIELD];
     const hours = Number(rawHours);
     const approvedRaw = fields[AIRTABLE_APPROVAL_FIELD];
     const approved = approvedRaw !== undefined && approvedRaw !== null && String(approvedRaw).toLowerCase() === AIRTABLE_APPROVAL_VALUE;
