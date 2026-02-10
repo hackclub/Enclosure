@@ -593,11 +593,11 @@ app.get("/api/auth/profile", async (req, res) => {
       if (found.length) userRow = found[0];
     }
 
-    // fallback to latest seen user for convenience
+    // Do not auto-fallback to the most-recent user. If there is no
+    // authorization token or matching user, treat the request as
+    // unauthenticated so clients don't appear "logged in" automatically.
     if (!userRow) {
-      const latest = await db.select().from(users).orderBy(desc(users.updatedAt)).limit(1);
-      if (!latest.length) return res.status(404).json({ error: "no user" });
-      userRow = latest[0];
+      return res.status(401).json({ error: "not authenticated" });
     }
 
     const canManageShop = userRow.role === "admin";
