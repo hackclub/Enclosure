@@ -317,27 +317,14 @@ app.get("/api/auth/callback", async (req, res) => {
       redirect_uri: IDENTITY_REDIRECT_URI,
       client_id: IDENTITY_CLIENT_ID,
       client_secret: IDENTITY_CLIENT_SECRET
-    // If we received a `state` payload with a `cont` value, prefer that
-    // continue URL for the final redirect. This allows callers of
-    // `/api/auth/login?continue=...` to return to a local dev frontend.
-    let finalContinue = FRONTEND_BASE_URL;
-    if (rawState) {
-      try {
-        const parsed = JSON.parse(Buffer.from(rawState, "base64url").toString("utf8"));
-        if (parsed && typeof parsed.cont === "string" && parsed.cont.length) {
-          finalContinue = parsed.cont;
-        }
-      } catch (e) {
-        // ignore parse errors and fall back to FRONTEND_BASE_URL
-      }
-    }
+    });
 
-    const redirectUrl = new URL("/", finalContinue);
-    res.redirect(302, redirectUrl.toString());
+    const tokenRes = await fetch(tokenUrl, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body
     });
+
     const tokenJson = await tokenRes.json();
     if (!tokenRes.ok || !tokenJson.access_token) {
       return res.status(502).json({ error: "token exchange failed", detail: tokenJson });
@@ -489,7 +476,20 @@ app.get("/api/auth/callback", async (req, res) => {
       return res.redirect(302, loginUrl.toString());
     }
 
-    const redirectUrl = new URL("/", FRONTEND_BASE_URL);
+    // Prefer a continue URL from OAuth `state` when provided (dev flow).
+    let finalContinue = FRONTEND_BASE_URL;
+    if (rawState) {
+      try {
+        const parsed = JSON.parse(Buffer.from(rawState, "base64url").toString("utf8"));
+        if (parsed && typeof parsed.cont === "string" && parsed.cont.length) {
+          finalContinue = parsed.cont;
+        }
+      } catch (e) {
+        // ignore parse errors and fall back to FRONTEND_BASE_URL
+      }
+    }
+
+    const redirectUrl = new URL("/", finalContinue);
     redirectUrl.searchParams.set("eligible", effectiveEligible ? "yes" : "no");
     if (!effectiveEligible) redirectUrl.searchParams.set("msg", "banned");
 
