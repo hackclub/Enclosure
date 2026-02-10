@@ -5,7 +5,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { desc, eq } from "drizzle-orm";
 import { db } from "./db.js";
-import { projects, createdProjects, shopItems, user as users } from "./schema.js";
+import { projects, createdProjects, shopItems, user as users, shopTransactions } from "./schema.js";
 
 // Move all env variable assignments here
 const IDENTITY_HOST = process.env.HC_IDENTITY_HOST || "https://auth.hackclub.com";
@@ -30,6 +30,32 @@ const HACKATIME_CLIENT_SECRET = process.env.HACKATIME_CLIENT_SECRET || "";
 const HACKATIME_REDIRECT_URI = process.env.HACKATIME_REDIRECT_URI || "http://localhost:4000/api/auth/hackatime/callback";
 const HACKATIME_SCOPE = process.env.HACKATIME_SCOPE || "profile read";
 const HACKATIME_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+// Airtable config for hours lookup (optional)
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || "";
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || "";
+const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME || "";
+const AIRTABLE_EMAIL_FIELD = process.env.AIRTABLE_EMAIL_FIELD || "Email";
+const AIRTABLE_HOURS_FIELD = process.env.AIRTABLE_HOURS_FIELD || "Hours";
+const HOURS_TO_CREDITS = Number(process.env.HOURS_TO_CREDITS || "1");
+
+async function fetchAirtableHoursByEmail(email) {
+  if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID || !AIRTABLE_TABLE_NAME || !email) return null;
+  try {
+    const q = `filterByFormula=${encodeURIComponent(`{${AIRTABLE_EMAIL_FIELD}}='${email.replace("'","\\'")}'`)}`;
+    const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}?${q}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` } });
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (!j.records || !j.records.length) return null;
+    const rec = j.records[0];
+    const hours = rec.fields ? rec.fields[AIRTABLE_HOURS_FIELD] : null;
+    const n = Number(hours);
+    return Number.isFinite(n) ? n : null;
+  } catch (err) {
+    console.error('airtable lookup failed', String(err));
+    return null;
+  }
+}
  
 async function fetchSlackAvatar(opts: { slackId?: string | null; email?: string | null }): Promise<string | undefined> {
   // Try cachet first (no token needed) when we have a Slack user id
@@ -176,6 +202,40 @@ app.patch("/api/projects/:id/status", async (req, res) => {
 
   if (!updated) {
     return res.status(404).json({ error: "project not found" });
+  }
+
+  // If project was approved, attempt to credit the submitting user based on Airtable hours
+  try {
+    if (String(status).toLowerCase() === "approved") {
+      // Try to find a submitted project record that matches name
+      const found = await db.select().from(createdProjects).where(eq(createdProjects.name, updated.name)).limit(1);
+      const email = found[0]?.email ?? null;
+      if (email) {
+        const hours = await fetchAirtableHoursByEmail(email);
+        if (hours !== null) {
+          const credits = Math.max(0, Math.floor(hours * HOURS_TO_CREDITS));
+          if (credits > 0) {
+            // Find a user row by email
+            const [u] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+            if (u) {
+              const prev = Number(u.credits ?? 0) || 0;
+              const next = prev + credits;
+              await db.update(users).set({ credits: String(next) }).where(eq(users.id, u.id));
+              await db.insert(shopTransactions).values({ userId: u.id, amount: String(credits), reason: `Payout for project ${updated.id}`, createdAt: new Date() });
+              console.log('Credited user', email, credits, 'hours=', hours);
+            } else {
+              console.log('No user found for email, skipping credit:', email);
+            }
+          }
+        } else {
+          console.log('No airtable hours found for', email);
+        }
+      } else {
+        console.log('No submission record found matching project name, skipping payout for project', updated.id);
+      }
+    }
+  } catch (err) {
+    console.error('payout processing failed', String(err));
   }
 
   res.json(updated);
