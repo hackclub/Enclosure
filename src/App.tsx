@@ -44,11 +44,11 @@ const faqItems = [
     answer: <p>Nope. You design it — we print it — we ship it to you.</p>,
   },
   {
-    key: "hackatime",
+    key: "Lapse",
     question: "Is Lapse required?",
     answer: (
       <p>
-        =Lapse is required only if you want to earn prizes from the shop; if you just want your enclosure printed and shipped you don’t need to track time.
+        Lapse is required only if you want to earn prizes from the shop; if you just want your enclosure printed and shipped you don’t need to track time.
         To qualify for shop rewards you must also maintain a short project journal on Gist and include a link to it with your submission.
       </p>
     ),
@@ -194,7 +194,7 @@ function Hero() {
         </div>
         <p>
           <b>
-            Design your cover, we 3D-print and ship it! Make it protective,
+            Design your enclosure, we 3D-print and ship it! Make it protective,
             weird, minimal, chunky, or cursed.
           </b>
         </p>
@@ -279,7 +279,7 @@ function Paths() {
           <div className="card" style={{ padding: '20px 32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 360 }}>
             <h3 style={{ marginTop: 0 }}>Design & Ship</h3>
             <p style={{ marginTop: 6 }}>
-              Submit your CAD file and our team will 3D-print and ship the finished enclosure to you. This path does not require Hackatime — ideal if you only want your design printed.
+              Submit your CAD file and our team will 3D-print and ship the finished enclosure to you. This path does not require Lapse — ideal if you only want your design printed.
             </p>
 
             <div style={{ marginTop: 10 }}>
@@ -293,7 +293,7 @@ function Paths() {
             </div>
 
             <ul style={{ marginTop: 10, color: 'var(--muted)' }}>
-              <li>No Hackatime required</li>
+              <li>No Lapse required</li>
               <li>We handle print preparation and shipping</li>
               <li>Expected turnaround: ~2–4 weeks (varies by volume)</li>
             </ul>
@@ -311,17 +311,17 @@ function Paths() {
           <div className="card" style={{ padding: '20px 32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 360 }}>
             <h3 style={{ marginTop: 0 }}>Earn Shop Items</h3>
             <p style={{ marginTop: 6 }}>
-              Track your hours with Hackatime or Lapse to earn access to shop tiers and prizes. Hours are verified through Hackatime and determine which rewards you can claim.
+              Track your hours with Lapse to earn access to shop tiers and prizes. Hours are verified through Lapse and determine which rewards you can claim.
             </p>
 
             <div style={{ marginTop: 8, color: '#ffd166', fontWeight: 800 }}>
-              📓 Journaling required — create a project journal on <a href="https://gist.github.com/" target="_blank" rel="noreferrer" style={{ color: 'white' }}>Gist</a> and include a link in your submission.
+              Journaling required — create a project journal on <a href="https://gist.github.com/" target="_blank" rel="noreferrer" style={{ color: 'white' }}>Gist</a> and include a link in your submission.
             </div>
 
             <div style={{ marginTop: 10 }}>
               <strong>What to expect</strong>
               <ol style={{ marginTop: 8 }}>
-                <li>Sign in to Hackatime (or Lapse) and enable tracking for your sessions.</li>
+                <li>Sign in to Lapse and enable tracking for your sessions.</li>
                 <li>Accumulate hours — different tiers unlock different shop rewards.</li>
                 <li>When you reach a tier, you'll be eligible to claim items from the shop.</li>
                 <li>Verification and fulfillment may take 1–3 weeks after claiming.</li>
@@ -329,13 +329,13 @@ function Paths() {
             </div>
 
             <ul style={{ marginTop: 10, color: 'var(--muted)' }}>
-              <li>Requires Hackatime/Lapse to count hours</li>
+              <li>Requires Lapse to count hours</li>
               <li>Hours map to shop tiers (see shop for tier thresholds)</li>
               <li>Prizes are shipped once verified</li>
             </ul>
 
             <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
-              <a href="https://hackatime.hackclub.com" target="_blank" rel="noreferrer">
+              <a href="https://lapse.hackclub.com" target="_blank" rel="noreferrer">
                 <button className="btn secondary">Track hours</button>
               </a>
               <a href="/shop">
@@ -387,7 +387,7 @@ function Shop() {
       ],
     },
     {
-      title: "20–99 hour prizes",
+      title: "20–49 hour prizes",
       direction: "reverse" as const,
       items: [
         { label: "Raspberry Pi 5", note: "48h", img: "https://placehold.co/200x140?text=Pi+5" },
@@ -401,7 +401,7 @@ function Shop() {
       ],
     },
     {
-      title: "100+ hour prizes",
+      title: "50-100 hour prizes",
       direction: "normal" as const,
       items: [
         { label: "Bambu Lab A1 mini", note: "printer", img: "https://placehold.co/200x140?text=Printer" },
@@ -682,7 +682,7 @@ export default function App() {
             }}
           >
             <div style={{ marginBottom: 8, color: '#ec3750', fontWeight: 700 }}>
-              Hackatime Slack ID:
+              Slack ID:
             </div>
             <div style={{ wordBreak: "break-all", fontFamily: 'monospace', fontSize: '1.1rem', marginBottom: 10 }}>
               {slackId ? slackId : "Slack ID not available."}

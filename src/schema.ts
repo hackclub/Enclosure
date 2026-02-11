@@ -15,7 +15,6 @@ export const user = pgTable("user", {
   verificationStatus: text("verification_status"),
   identityToken: text("identity_token"),
   refreshToken: text("refresh_token"),
-  // Hackatime columns removed to simplify auth flow
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: false }).defaultNow()
 });

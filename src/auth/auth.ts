@@ -1,8 +1,6 @@
 import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
-import { db } from "../db.js";
-import * as schema from "../schema.js";
+import airtableAdapter from "./airtableAdapter.js";
 
 let _auth: ReturnType<typeof betterAuth> | null = null;
 
@@ -10,10 +8,7 @@ function createAuth() {
   const identityHost = process.env.HC_IDENTITY_HOST!;
   
   return betterAuth({
-    database: drizzleAdapter(db, {
-      provider: "pg",
-      schema,
-    }),
+    database: airtableAdapter(),
     user: {},
     emailAndPassword: {
       enabled: false,

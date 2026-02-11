@@ -45,7 +45,6 @@ export default function ShopPage() {
     href: ""
   });
 
-
   const loadItems = async () => {
     setLoading(true);
     setStatus(null);
@@ -227,6 +226,35 @@ export default function ShopPage() {
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
                       <div style={{ fontWeight: 700 }}>{(item.price ? Number(item.price) : 0)} credits</div>
                       <button className="btn" onClick={() => buyItem(item.id)}>Buy</button>
+                      {isAdmin ? (
+                        <button
+                          className="btn secondary"
+                          style={{ marginLeft: 8 }}
+                          onClick={async () => {
+                            if (!confirm(`Delete item "${item.title}"? This cannot be undone.`)) return;
+                            setStatus(null);
+                            try {
+                              if (!token) { setStatus('Missing admin token'); return; }
+                              const res = await fetch(`${API_BASE}/api/shop-items/${item.id}`, {
+                                method: 'DELETE',
+                                headers: { Authorization: `Bearer ${token}` }
+                              });
+                              if (!res.ok) {
+                                const txt = await res.text();
+                                setStatus(`Delete failed: ${res.status} ${txt}`);
+                                return;
+                              }
+                              setStatus('Item deleted');
+                              await loadItems();
+                            } catch (err) {
+                              const msg = err instanceof Error ? err.message : String(err);
+                              setStatus(`Delete failed: ${msg}`);
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 ));
