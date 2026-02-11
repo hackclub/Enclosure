@@ -28,16 +28,18 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || (() => {
 const DEV_FORCE_ELIGIBLE = process.env.DEV_FORCE_ELIGIBLE?.toLowerCase();
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
 const CACHET_BASE = process.env.CACHET_BASE || "https://cachet.dunkirk.sh";
-// Hackatime integration removed per request.
-// Airtable config for hours lookup (optional)
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || "";
+const AIRTABLE_PAT = process.env.AIRTABLE_PAT || process.env.AIRTABLE_API_KEY || "";
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || "";
 const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME || "";
+const AIRTABLE_SHOP_ITEM_TABLE = process.env.AIRTABLE_SHOP_ITEM_TABLE || process.env.AIRTABLE_SHOP_ITEM_TABLE_NAME || "shop_items";
+const AIRTABLE_SHOP_ITEM_ID_FIELD = process.env.AIRTABLE_SHOP_ITEM_ID_FIELD || "id";
+const AIRTABLE_SHOP_ITEM_TITLE_FIELD = process.env.AIRTABLE_SHOP_ITEM_TITLE_FIELD || "title";
+const AIRTABLE_SHOP_ITEM_NOTE_FIELD = process.env.AIRTABLE_SHOP_ITEM_NOTE_FIELD || "note";
+const AIRTABLE_SHOP_ITEM_IMG_FIELD = process.env.AIRTABLE_SHOP_ITEM_IMG_FIELD || "img";
+const AIRTABLE_SHOP_ITEM_PRICE_FIELD = process.env.AIRTABLE_SHOP_ITEM_PRICE_FIELD || "price";
 const AIRTABLE_EMAIL_FIELD = process.env.AIRTABLE_EMAIL_FIELD || "Email";
 const AIRTABLE_HOURS_FIELD = process.env.AIRTABLE_HOURS_FIELD || "Hours";
-// If your Airtable stores a separate "approved hours" field that differs
-// from total hours, set `AIRTABLE_APPROVED_HOURS_FIELD`. Otherwise we
-// fall back to `AIRTABLE_HOURS_FIELD`.
 const AIRTABLE_APPROVED_HOURS_FIELD = process.env.AIRTABLE_APPROVED_HOURS_FIELD || AIRTABLE_HOURS_FIELD;
 const AIRTABLE_APPROVAL_FIELD = process.env.AIRTABLE_APPROVAL_FIELD || "Approved";
 const AIRTABLE_APPROVAL_VALUE = (process.env.AIRTABLE_APPROVAL_VALUE || "yes").toLowerCase();
@@ -65,6 +67,44 @@ async function fetchAirtableRecordByEmail(email) {
     return { hours: Number.isFinite(hours) ? hours : null, approved };
   } catch (err) {
     console.error('airtable lookup failed', String(err));
+    return null;
+  }
+}
+
+// Helper: list all records from an Airtable table (handles simple pagination)
+async function listAirtableTable(tableName) {
+  if (!AIRTABLE_PAT || !AIRTABLE_BASE_ID || !tableName) return [];
+  const out = [];
+  let offset = undefined;
+  try {
+    do {
+      const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`);
+      if (offset) url.searchParams.set('offset', offset);
+      url.searchParams.set('pageSize', '100');
+      const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${AIRTABLE_PAT}` } });
+      if (!res.ok) break;
+      const j = await res.json();
+      if (j.records && Array.isArray(j.records)) out.push(...j.records);
+      offset = j.offset;
+    } while (offset);
+  } catch (err) {
+    console.error('airtable list failed', String(err));
+  }
+  return out;
+}
+
+async function findAirtableRecordByField(tableName: string, fieldName: string, value: string) {
+  if (!AIRTABLE_PAT || !AIRTABLE_BASE_ID || !tableName || !fieldName) return null;
+  try {
+    const q = `filterByFormula=${encodeURIComponent(`{${fieldName}}='${String(value).replace(/'/g,"\\'")}'`)}`;
+    const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}?${q}&pageSize=1`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_PAT}` } });
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (!j.records || !j.records.length) return null;
+    return j.records[0];
+  } catch (err) {
+    console.error('airtable find failed', String(err));
     return null;
   }
 }
@@ -471,9 +511,6 @@ app.get("/api/auth/callback", async (req, res) => {
       }
     }
 
-    // Hackatime integration removed: skip linking Hackatime accounts.
-
-    // Prefer a continue URL from OAuth `state` when provided (dev flow).
     let finalContinue = FRONTEND_BASE_URL;
     if (rawState) {
       try {
@@ -523,8 +560,6 @@ app.get("/api/auth/callback", async (req, res) => {
     res.status(500).json({ error: "auth callback failed", detail: message });
   }
 });
-
-// Hackatime integration removed: endpoints deleted.
 
 app.get("/api/auth/me", async (req, res) => {
   const token = extractToken(req);
@@ -678,6 +713,25 @@ app.listen(PORT, () => {
 // Add this after all app.use and before any catch-all or app.listen
 app.get("/api/shop-items", async (req, res) => {
   try {
+    // If an Airtable shop items table is configured, return items from Airtable.
+    if (AIRTABLE_PAT && AIRTABLE_BASE_ID && AIRTABLE_SHOP_ITEM_TABLE) {
+      const records = await listAirtableTable(AIRTABLE_SHOP_ITEM_TABLE);
+      const items = records.map((rec, idx) => {
+        const f = rec.fields || {};
+        const idRaw = f[AIRTABLE_SHOP_ITEM_ID_FIELD] ?? f.id ?? rec.id;
+        const id = Number(idRaw) || (idx + 1);
+        return {
+          id,
+          title: f[AIRTABLE_SHOP_ITEM_TITLE_FIELD] ?? f.title ?? "",
+          note: f[AIRTABLE_SHOP_ITEM_NOTE_FIELD] ?? f.note ?? null,
+          price: f[AIRTABLE_SHOP_ITEM_PRICE_FIELD] ?? f.price ?? null,
+          img: f[AIRTABLE_SHOP_ITEM_IMG_FIELD] ?? f.img ?? null,
+          href: f.href ?? null,
+        };
+      });
+      return res.json(items);
+    }
+
     const items = await db.select().from(shopItems).orderBy(desc(shopItems.id));
     res.json(items);
   } catch (err) {
@@ -699,9 +753,22 @@ app.post("/api/shop/buy", async (req, res) => {
     const itemId = Number(id);
     if (!Number.isInteger(itemId)) return res.status(400).json({ error: "invalid item id" });
 
-    const found = await db.select().from(shopItems).where(eq(shopItems.id, itemId)).limit(1);
-    const item = found[0];
-    if (!item) return res.status(404).json({ error: "item not found" });
+    let item;
+    // If using Airtable shop items, lookup there
+    if (AIRTABLE_PAT && AIRTABLE_BASE_ID && AIRTABLE_SHOP_ITEM_TABLE) {
+      const rec = await findAirtableRecordByField(AIRTABLE_SHOP_ITEM_TABLE, AIRTABLE_SHOP_ITEM_ID_FIELD, String(itemId));
+      if (!rec) return res.status(404).json({ error: "item not found" });
+      const f = rec.fields || {};
+      item = {
+        id: Number(f[AIRTABLE_SHOP_ITEM_ID_FIELD]) || itemId,
+        title: f[AIRTABLE_SHOP_ITEM_TITLE_FIELD] ?? f.title ?? "",
+        price: f[AIRTABLE_SHOP_ITEM_PRICE_FIELD] ?? f.price ?? 0,
+      };
+    } else {
+      const found = await db.select().from(shopItems).where(eq(shopItems.id, itemId)).limit(1);
+      item = found[0];
+      if (!item) return res.status(404).json({ error: "item not found" });
+    }
 
     const price = Number(item.price ?? 0) || 0;
     const current = Number(u.credits ?? 0) || 0;
@@ -731,6 +798,33 @@ app.post("/api/shop-items", async (req, res) => {
 
     const { title, note, img, href } = req.body || {};
     if (!title || typeof title !== "string") return res.status(400).send("title is required");
+    // If configured to use Airtable for shop items, insert into Airtable table
+    if (AIRTABLE_PAT && AIRTABLE_BASE_ID && AIRTABLE_SHOP_ITEM_TABLE) {
+      const fields: any = {};
+      fields[AIRTABLE_SHOP_ITEM_TITLE_FIELD] = title.trim();
+      if (typeof note === "string") fields[AIRTABLE_SHOP_ITEM_NOTE_FIELD] = note.trim();
+      if (typeof img === "string") fields[AIRTABLE_SHOP_ITEM_IMG_FIELD] = img.trim();
+      if (typeof href === "string") fields.href = href.trim();
+      // Caller may set price later via Airtable UI; insert minimal fields
+      const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_SHOP_ITEM_TABLE)}`;
+      const postRes = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${AIRTABLE_PAT}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
+      if (!postRes.ok) {
+        const txt = await postRes.text();
+        return res.status(500).send(`Failed to create shop item in Airtable: ${txt}`);
+      }
+      const createdJson = await postRes.json();
+      const rec = createdJson.records && createdJson.records[0];
+      const f = rec?.fields || {};
+      const created = {
+        id: Number(f[AIRTABLE_SHOP_ITEM_ID_FIELD]) || rec?.id,
+        title: f[AIRTABLE_SHOP_ITEM_TITLE_FIELD] ?? f.title ?? title,
+        note: f[AIRTABLE_SHOP_ITEM_NOTE_FIELD] ?? f.note ?? null,
+        img: f[AIRTABLE_SHOP_ITEM_IMG_FIELD] ?? f.img ?? null,
+        href: f.href ?? null,
+        price: f[AIRTABLE_SHOP_ITEM_PRICE_FIELD] ?? f.price ?? null,
+      };
+      return res.status(201).json(created);
+    }
 
     const [created] = await db.insert(shopItems).values({
       title: title.trim(),
@@ -744,5 +838,44 @@ app.post("/api/shop-items", async (req, res) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).send(`Failed to create shop item: ${message}`);
+  }
+});
+
+// Admin-only: delete a shop item (supports Airtable-backed or Postgres-backed items)
+app.delete("/api/shop-items/:id", async (req, res) => {
+  try {
+    const auth = req.headers.authorization || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+    if (!token) return res.status(401).send("Missing Authorization Bearer token");
+
+    const [u] = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+    if (!u) return res.status(401).send("Invalid token");
+    if (u.role !== "admin") return res.status(403).send("Admin access required");
+
+    const idParam = req.params.id;
+    if (!idParam) return res.status(400).send("id required");
+
+    if (AIRTABLE_PAT && AIRTABLE_BASE_ID && AIRTABLE_SHOP_ITEM_TABLE) {
+      // Find the Airtable record by configured id field, then delete the record by record id
+      const rec = await findAirtableRecordByField(AIRTABLE_SHOP_ITEM_TABLE, AIRTABLE_SHOP_ITEM_ID_FIELD, String(idParam));
+      if (!rec) return res.status(404).send("item not found");
+      const recId = rec.id;
+      const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_SHOP_ITEM_TABLE)}/${recId}`;
+      const delRes = await fetch(url, { method: 'DELETE', headers: { Authorization: `Bearer ${AIRTABLE_PAT}` } });
+      if (!delRes.ok) {
+        const txt = await delRes.text();
+        return res.status(500).send(`Failed to delete Airtable record: ${txt}`);
+      }
+      return res.json({ ok: true });
+    }
+
+    // Postgres-backed: delete by numeric id
+    const idNum = Number(idParam);
+    if (!Number.isInteger(idNum)) return res.status(400).send("invalid id");
+    await db.delete(shopItems).where(eq(shopItems.id, idNum));
+    return res.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).send(`Failed to delete shop item: ${message}`);
   }
 });

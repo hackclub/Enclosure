@@ -13,10 +13,7 @@ export const user = pgTable("user", {
     verificationStatus: text("verification_status"),
     identityToken: text("identity_token"),
     refreshToken: text("refresh_token"),
-    hackatimeAccessToken: text("hackatime_access_token"),
-    hackatimeRefreshToken: text("hackatime_refresh_token"),
-    hackatimeExpiresAt: timestamp("hackatime_expires_at", { withTimezone: false }),
-    hackatimeUserId: text("hackatime_user_id"),
+    // hackatime fields removed
     createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: false }).defaultNow()
 });
