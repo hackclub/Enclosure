@@ -18,6 +18,7 @@ type ShopItem = {
   id: number;
   title: string;
   note: string | null;
+  price?: string | number | null;
   img: string | null;
   href: string | null;
 };
@@ -32,6 +33,7 @@ type ProfileResponse = {
 export default function ShopPage() {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [credits, setCredits] = useState<number | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,6 +44,7 @@ export default function ShopPage() {
     img: "",
     href: ""
   });
+
 
   const loadItems = async () => {
     setLoading(true);
@@ -79,11 +82,35 @@ export default function ShopPage() {
         const canManage = Boolean(data.canManageShop || data.role === "admin");
         setIsAdmin(canManage);
         if (canManage && data.identityToken) setToken(data.identityToken);
+        if (typeof (data as any).credits === 'number') setCredits((data as any).credits as number);
       } catch (_err) {
         // ignore
       }
     })();
   }, []);
+
+      const buyItem = async (itemId: number) => {
+        setStatus(null);
+        try {
+          const res = await fetch(`${API_BASE}/api/shop/buy`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: itemId })
+          });
+          const j = await res.json();
+          if (!res.ok) {
+            setStatus((j && j.error) ? j.error : `Purchase failed: ${res.status}`);
+            return;
+          }
+          // update local credits
+          if (typeof j.credits === 'number') setCredits(j.credits);
+          setStatus("Purchase successful!");
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          setStatus(`Purchase failed: ${msg}`);
+        }
+      };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -134,12 +161,28 @@ export default function ShopPage() {
     <main>
       <section className="section" id="shop">
         <div className="container">
-          <div style={{ marginBottom: 12 }}>
-            <a className="btn secondary" href="/">
+          <div style={{ marginBottom: 12, position: 'relative' }}>
+            <a className="btn secondary" href="/" style={{ position: 'absolute', left: 0, top: 0 }}>
               ← Back to main page
             </a>
           </div>
-          <h2>Shop</h2>
+          <div style={{ position: 'relative', marginBottom: 8 }}>
+            <h2 style={{ margin: 0, textAlign: 'center' }}>Shop</h2>
+            {typeof credits === 'number' ? (
+              <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}>
+                <div style={{
+                  display: 'inline-block',
+                  padding: '10px 16px',
+                  borderRadius: 12,
+                  border: '2px solid #b45309',
+                  background: '#fff7ed',
+                  color: '#b45309',
+                  fontWeight: 800,
+                  fontSize: 18,
+                }}>{credits} credits</div>
+              </div>
+            ) : null}
+          </div>
           <div className="section-note">Browse the full shop list.</div>
           <div className="grid shop-grid">
             {
@@ -181,8 +224,10 @@ export default function ShopPage() {
 
                     <h3>{item.title}</h3>
                     {item.note ? <p className="muted">{item.note}</p> : null}
-
-                    {/* Claim button removed per request */}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+                      <div style={{ fontWeight: 700 }}>{(item.price ? Number(item.price) : 0)} credits</div>
+                      <button className="btn" onClick={() => buyItem(item.id)}>Buy</button>
+                    </div>
                   </div>
                 ));
               })()

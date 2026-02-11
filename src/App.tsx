@@ -45,8 +45,13 @@ const faqItems = [
   },
   {
     key: "hackatime",
-    question: "Is Hackatime / Lapse required?",
-    answer: <p>Hackatime / Lapse is required only if you want to earn prizes from shop but if you just want to get your enclosure shipped to you you don't need Hackatime or Lapse to track your time ! </p>,
+    question: "Is Lapse required?",
+    answer: (
+      <p>
+        =Lapse is required only if you want to earn prizes from the shop; if you just want your enclosure printed and shipped you don’t need to track time.
+        To qualify for shop rewards you must also maintain a short project journal on Gist and include a link to it with your submission.
+      </p>
+    ),
   },
   {
     key: "format",
@@ -131,10 +136,10 @@ const requirements = [
     tag: "supported CAD",
   },
   {
-    icon: "🧱",
-    title: "No supports needed",
-    body: "Design so it prints cleanly without extra supports. Think about overhangs.",
-    tag: "print-friendly",
+    icon: "📓",
+    title: "Journal required",
+    body: "Create a project journal on Gist documenting progress, decisions, and changes. Include a link to it in your submission.",
+    tag: "github",
   },
   {
     icon: "📏",
@@ -148,6 +153,7 @@ const requirements = [
     body: "Anyone can participate who is 13-18 years old.",
     tag: "play nice",
   },
+  
 ];
 
 function Hero() {
@@ -307,6 +313,10 @@ function Paths() {
             <p style={{ marginTop: 6 }}>
               Track your hours with Hackatime or Lapse to earn access to shop tiers and prizes. Hours are verified through Hackatime and determine which rewards you can claim.
             </p>
+
+            <div style={{ marginTop: 8, color: '#ffd166', fontWeight: 800 }}>
+              📓 Journaling required — create a project journal on <a href="https://gist.github.com/" target="_blank" rel="noreferrer" style={{ color: 'white' }}>Gist</a> and include a link in your submission.
+            </div>
 
             <div style={{ marginTop: 10 }}>
               <strong>What to expect</strong>
@@ -617,21 +627,23 @@ export default function App() {
         onClick={() => setShowSlackPopup((v) => !v)}
       >
         {/* Credits display to the left of the avatar */}
-        {typeof credits === "number" ? (
+          {typeof credits === "number" ? (
           <div
             style={{
               position: "absolute",
               right: 76,
               top: 12,
-              background: "var(--card)",
-              padding: "6px 10px",
-              borderRadius: 8,
-              border: "2px solid #000",
-              fontWeight: 700,
-              color: "#111",
+              background: "#fff7ed",
+              
+              border: "2px solid #b45309",
+              fontWeight: 800,
+              color: "#b45309",
               boxShadow: "2px 2px 0 #000",
               zIndex: 2100,
-              fontSize: 14,
+              fontSize: 18,
+              letterSpacing: 0.2,
+              padding: "10px 16px",
+              borderRadius: 12,
             }}
           >
             {credits} credits
