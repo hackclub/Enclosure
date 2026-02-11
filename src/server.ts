@@ -28,12 +28,7 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || (() => {
 const DEV_FORCE_ELIGIBLE = process.env.DEV_FORCE_ELIGIBLE?.toLowerCase();
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
 const CACHET_BASE = process.env.CACHET_BASE || "https://cachet.dunkirk.sh";
-const HACKATIME_HOST = process.env.HACKATIME_HOST || "https://hackatime.hackclub.com";
-const HACKATIME_CLIENT_ID = process.env.HACKATIME_CLIENT_ID || "";
-const HACKATIME_CLIENT_SECRET = process.env.HACKATIME_CLIENT_SECRET || "";
-const HACKATIME_REDIRECT_URI = process.env.HACKATIME_REDIRECT_URI || "http://localhost:4000/api/auth/hackatime/callback";
-const HACKATIME_SCOPE = process.env.HACKATIME_SCOPE || "profile read";
-const HACKATIME_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+// Hackatime integration removed per request.
 // Airtable config for hours lookup (optional)
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || "";
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || "";
@@ -320,7 +315,6 @@ app.get("/api/auth/login", (req, res) => {
 app.get("/api/auth/logout", (_req, res) => {
   res.clearCookie("session");
   res.clearCookie("hc_identity");
-  res.clearCookie("hackatime_token");
   const redirectUrl = new URL("/", FRONTEND_BASE_URL);
   res.redirect(302, redirectUrl.toString());
 });
@@ -454,12 +448,8 @@ app.get("/api/auth/callback", async (req, res) => {
         verificationStatus: string | null;
         identityToken: string | null;
         refreshToken: string | null;
-        hackatimeAccessToken: string | null;
-        hackatimeRefreshToken: string | null;
-        hackatimeExpiresAt: Date | null;
-        hackatimeUserId: string | null;
         updatedAt: Date;
-      } = {
+        } = {
         name: pickString(identityName ?? existing[0]?.name),
         email: emailValue,
         emailVerified,
@@ -469,11 +459,7 @@ app.get("/api/auth/callback", async (req, res) => {
         verificationStatus: pickString(verificationStatus ?? existing[0]?.verificationStatus),
         identityToken: typeof tokenJson.access_token === "string" ? tokenJson.access_token : existing[0]?.identityToken || null,
         refreshToken: typeof tokenJson.refresh_token === "string" ? tokenJson.refresh_token : existing[0]?.refreshToken || null,
-        hackatimeAccessToken: existing[0]?.hackatimeAccessToken || null,
-        hackatimeRefreshToken: existing[0]?.hackatimeRefreshToken || null,
-        hackatimeExpiresAt: existing[0]?.hackatimeExpiresAt || null,
-        hackatimeUserId: existing[0]?.hackatimeUserId || null,
-        updatedAt: new Date()
+          updatedAt: new Date()
       };
 
       if (existing.length) {
@@ -485,19 +471,7 @@ app.get("/api/auth/callback", async (req, res) => {
       }
     }
 
-    const hasValidHackatime =
-      existing.length &&
-      existing[0]?.hackatimeAccessToken &&
-      existing[0]?.hackatimeExpiresAt &&
-      new Date(existing[0].hackatimeExpiresAt).getTime() > Date.now();
-
-    const needsHackatime = identityId && !hasValidHackatime;
-    if (needsHackatime && HACKATIME_CLIENT_ID && HACKATIME_CLIENT_SECRET) {
-      const loginUrl = new URL("/api/auth/hackatime/login", SERVER_BASE_URL);
-      loginUrl.searchParams.set("user_id", identityId as string);
-      loginUrl.searchParams.set("continue", new URL("/", FRONTEND_BASE_URL).toString());
-      return res.redirect(302, loginUrl.toString());
-    }
+    // Hackatime integration removed: skip linking Hackatime accounts.
 
     // Prefer a continue URL from OAuth `state` when provided (dev flow).
     let finalContinue = FRONTEND_BASE_URL;
@@ -550,102 +524,7 @@ app.get("/api/auth/callback", async (req, res) => {
   }
 });
 
-// Hackatime OAuth
-app.get("/api/auth/hackatime/login", (req, res) => {
-  if (!HACKATIME_CLIENT_ID) return res.status(500).send("Missing HACKATIME_CLIENT_ID");
-  const userId = (req.query.user_id as string | undefined) || "";
-  const cont = (req.query.continue as string | undefined) || FRONTEND_BASE_URL;
-  const statePayload = Buffer.from(JSON.stringify({ userId, cont }), "utf8").toString("base64url");
-  const url = new URL("/oauth/authorize", HACKATIME_HOST);
-  url.searchParams.set("client_id", HACKATIME_CLIENT_ID);
-  url.searchParams.set("redirect_uri", HACKATIME_REDIRECT_URI);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", HACKATIME_SCOPE);
-  url.searchParams.set("state", statePayload);
-  res.redirect(url.toString());
-});
-
-app.get("/api/auth/hackatime/callback", async (req, res) => {
-  const code = req.query.code as string | undefined;
-  const rawState = req.query.state as string | undefined;
-  if (!code) return res.status(400).send("Missing code");
-  if (!HACKATIME_CLIENT_ID || !HACKATIME_CLIENT_SECRET) {
-    return res.status(500).send("Missing Hackatime client id/secret");
-  }
-
-  let state: { userId?: string; cont?: string } = {};
-  try {
-    state = rawState ? (JSON.parse(Buffer.from(rawState, "base64url").toString("utf8")) as { userId?: string; cont?: string }) : {};
-  } catch {
-    // ignore bad state
-  }
-
-  const userId = state.userId;
-  const continueUrl = state.cont || FRONTEND_BASE_URL;
-
-  if (!userId) {
-    return res.status(400).send("Missing user_id in state");
-  }
-
-  try {
-    const tokenUrl = new URL("/oauth/token", HACKATIME_HOST);
-    const body = new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: HACKATIME_REDIRECT_URI,
-      client_id: HACKATIME_CLIENT_ID,
-      client_secret: HACKATIME_CLIENT_SECRET
-    });
-
-    const tokenRes = await fetch(tokenUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body
-    });
-
-    const tokenJson = await tokenRes.json();
-    if (!tokenRes.ok || !tokenJson.access_token) {
-      console.error("[hackatime] token exchange failed", tokenRes.status, tokenJson);
-      return res.status(502).json({ error: "hackatime token exchange failed", status: tokenRes.status, detail: tokenJson });
-    }
-
-    const meUrl = new URL("/api/v1/authenticated/me", HACKATIME_HOST);
-    const meRes = await fetch(meUrl, {
-      headers: {
-        Authorization: `Bearer ${tokenJson.access_token}`,
-        Accept: "application/json"
-      }
-    });
-    if (!meRes.ok) {
-      const detail = await meRes.text();
-      console.error("[hackatime] profile fetch failed", meRes.status, detail);
-      return res.status(502).json({ error: "hackatime profile fetch failed", status: meRes.status, detail });
-    }
-    const meJson = (await meRes.json()) as { id?: number | string };
-    const hackatimeUserId = meJson?.id ? String(meJson.id) : null;
-
-    const expiresAt = new Date(Date.now() + HACKATIME_TOKEN_TTL_MS);
-
-    await db
-      .update(users)
-      .set({
-        hackatimeAccessToken: typeof tokenJson.access_token === "string" ? tokenJson.access_token : null,
-        hackatimeRefreshToken: typeof tokenJson.refresh_token === "string" ? tokenJson.refresh_token : null,
-        hackatimeExpiresAt: expiresAt,
-        hackatimeUserId,
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, userId));
-
-    console.log("Oauth Successful 1", { userId, hackatimeUserId });
-
-    const redirectUrl = new URL(continueUrl);
-    res.redirect(302, redirectUrl.toString());
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: "hackatime callback failed", detail: message });
-  }
-});
+// Hackatime integration removed: endpoints deleted.
 
 app.get("/api/auth/me", async (req, res) => {
   const token = extractToken(req);
@@ -695,7 +574,6 @@ app.get("/api/auth/profile", async (req, res) => {
       canManageShop,
       identityToken: canManageShop ? userRow.identityToken : null,
       identityLinked: Boolean(userRow.id),
-      hackatimeLinked: Boolean(userRow.hackatimeAccessToken),
       // Expose the user's current credits (number). Stored as text in DB,
       // so coerce to Number and default to 0 if missing.
       credits: Number(userRow.credits ?? 0),
@@ -805,6 +683,38 @@ app.get("/api/shop-items", async (req, res) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).send(`Failed to load shop items: ${message}`);
+  }
+});
+
+// Purchase an item: deduct credits and record a transaction.
+app.post("/api/shop/buy", async (req, res) => {
+  try {
+    const token = extractToken(req);
+    if (!token) return res.status(401).json({ error: "not authenticated" });
+
+    const [u] = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+    if (!u) return res.status(401).json({ error: "invalid token" });
+
+    const { id } = req.body || {};
+    const itemId = Number(id);
+    if (!Number.isInteger(itemId)) return res.status(400).json({ error: "invalid item id" });
+
+    const found = await db.select().from(shopItems).where(eq(shopItems.id, itemId)).limit(1);
+    const item = found[0];
+    if (!item) return res.status(404).json({ error: "item not found" });
+
+    const price = Number(item.price ?? 0) || 0;
+    const current = Number(u.credits ?? 0) || 0;
+    if (current < price) return res.status(400).json({ error: "insufficient credits", credits: current, price });
+
+    const next = current - price;
+    await db.update(users).set({ credits: String(next) }).where(eq(users.id, u.id));
+    await db.insert(shopTransactions).values({ userId: u.id, amount: String(-price), reason: `Purchase: ${item.title}`, createdAt: new Date() });
+
+    res.json({ ok: true, credits: next, itemId: itemId });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "purchase failed", detail: message });
   }
 });
 

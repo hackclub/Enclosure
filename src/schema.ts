@@ -15,10 +15,7 @@ export const user = pgTable("user", {
   verificationStatus: text("verification_status"),
   identityToken: text("identity_token"),
   refreshToken: text("refresh_token"),
-  hackatimeAccessToken: text("hackatime_access_token"),
-  hackatimeRefreshToken: text("hackatime_refresh_token"),
-  hackatimeExpiresAt: timestamp("hackatime_expires_at", { withTimezone: false }),
-  hackatimeUserId: text("hackatime_user_id"),
+  // Hackatime columns removed to simplify auth flow
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: false }).defaultNow()
 });
@@ -72,6 +69,8 @@ export const shopItems = pgTable("shop_items", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   note: text("note"),
+  // Price stored as text to keep parity with `user.credits` storage. Value is integer string (credits)
+  price: text("price"),
   img: text("img"),
   href: text("href"),
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow()
