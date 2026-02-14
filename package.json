@@ -16,8 +16,8 @@
     "dev:api": "tsx src/server.ts",
     "build:server": "tsc -p tsconfig.server.json",
     "start:prod": "node dist-server/server.js",
-    "postinstall": "npm run build && npm run build:server",
-    "heroku-postbuild": "npm run build && npm run build:server"
+    "build:all": "npm run build && npm run build:server",
+    "heroku-postbuild": "npm run build:all"
   },
   "repository": {
     "type": "git",

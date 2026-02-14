@@ -1,0 +1,31 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: enclosure
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      # Point the app to the Postgres service
+      DATABASE_URL: postgres://postgres:postgres@db:5432/enclosure
+      NODE_ENV: production
+      # Optional - forward these from your environment when running compose
+      HC_IDENTITY_CLIENT_ID: ${HC_IDENTITY_CLIENT_ID}
+      HC_IDENTITY_CLIENT_SECRET: ${HC_IDENTITY_CLIENT_SECRET}
+      HC_IDENTITY_REDIRECT_URI: ${HC_IDENTITY_REDIRECT_URI}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5713}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+    depends_on:
+      - db
+
+volumes:
+  db_data:
