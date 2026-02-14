@@ -28,11 +28,14 @@ type ProfileResponse = {
   name?: string | null;
   canManageShop?: boolean;
   identityToken?: string | null;
+  shopOpen?: boolean | null;
 };
 
 export default function ShopPage() {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [shopOpen, setShopOpen] = useState<boolean | null>(null);
+  const [devAdmin, setDevAdmin] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -44,6 +47,7 @@ export default function ShopPage() {
     img: "",
     href: ""
   });
+
 
   const loadItems = async () => {
     setLoading(true);
@@ -69,23 +73,38 @@ export default function ShopPage() {
   };
 
   useEffect(() => {
-    loadItems();
-  }, []);
-
-  useEffect(() => {
     (async () => {
+      let allowed = false;
       try {
         const res = await fetch(`${API_BASE}/api/auth/profile`, { credentials: "include" });
-        if (!res.ok) return;
-        const data = (await res.json()) as ProfileResponse;
-        const canManage = Boolean(data.canManageShop || data.role === "admin");
-        setIsAdmin(canManage);
-        if (canManage && data.identityToken) setToken(data.identityToken);
-        if (typeof (data as any).credits === 'number') setCredits((data as any).credits as number);
+        if (!res.ok) {
+          setShopOpen(false);
+          allowed = false;
+        } else {
+          const data = (await res.json()) as ProfileResponse;
+          const canManage = Boolean(data.canManageShop || data.role === "admin");
+          setIsAdmin(canManage);
+          setShopOpen(Boolean(data.shopOpen));
+          if (canManage && data.identityToken) setToken(data.identityToken);
+          if (typeof (data as any).credits === 'number') setCredits((data as any).credits as number);
+          allowed = canManage || Boolean(data.shopOpen);
+        }
       } catch (_err) {
-        // ignore
+        setShopOpen(false);
+        allowed = false;
+      }
+
+      // Dev helper: allow enabling admin form via ?dev_admin=1
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('dev_admin') === '1') setDevAdmin(true);
+      } catch (_) {}
+
+      if (allowed) {
+        try { await loadItems(); } catch (_) {}
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
       const buyItem = async (itemId: number) => {
@@ -115,12 +134,8 @@ export default function ShopPage() {
     event.preventDefault();
     setStatus(null);
 
-    if (!isAdmin) {
+    if (!isAdmin && !devAdmin) {
       setStatus("Admin access required.");
-      return;
-    }
-    if (!token) {
-      setStatus("Missing admin token. Please log in again.");
       return;
     }
 
@@ -129,7 +144,7 @@ export default function ShopPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           title: form.title,
@@ -161,31 +176,52 @@ export default function ShopPage() {
       <section className="section" id="shop">
         <div className="container">
           <div style={{ marginBottom: 12, position: 'relative' }}>
-            <a className="btn secondary" href="/" style={{ position: 'absolute', left: 0, top: 0 }}>
+            <button
+              className="btn secondary"
+              type="button"
+              style={{ position: 'absolute', left: 0, top: 0, zIndex: 9999, padding: '8px 12px' }}
+              onClick={() => { window.location.href = '/'; }}
+            >
               ← Back to main page
-            </a>
+            </button>
           </div>
           <div style={{ position: 'relative', marginBottom: 8 }}>
             <h2 style={{ margin: 0, textAlign: 'center' }}>Shop</h2>
-            {typeof credits === 'number' ? (
-              <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}>
+            <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 12, alignItems: 'center', zIndex: 2000 }}>
+              {typeof credits === 'number' ? (
                 <div style={{
-                  display: 'inline-block',
-                  padding: '10px 16px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
                   borderRadius: 12,
                   border: '2px solid #b45309',
                   background: '#fff7ed',
                   color: '#b45309',
                   fontWeight: 800,
                   fontSize: 18,
-                }}>{credits} credits</div>
-              </div>
-            ) : null}
+                }}>
+                  <div style={{ lineHeight: 1 }}>{credits}</div>
+                  <img src="/assets/Cassos.png" alt="cassos" style={{ width: 34, height: 40, display: 'block' }} />
+                </div>
+              ) : null}
+              <button
+                className="btn secondary"
+                onClick={() => { window.location.href = '/orders'; }}
+                type="button"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                View your orders
+              </button>
+            </div>
           </div>
-          <div className="section-note">Browse the full shop list.</div>
+          <div className="section-note">{shopOpen === false && !isAdmin ? 'The shop is currently closed to members.' : 'Browse the full shop list.'}</div>
           <div className="grid shop-grid">
             {
               (() => {
+                if (shopOpen === false && !isAdmin) {
+                  return <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40 }}>The shop is closed for regular members.</div>;
+                }
                 if (loading) {
                   return <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 20 }}>Loading shop items…</div>;
                 }
@@ -223,38 +259,14 @@ export default function ShopPage() {
 
                     <h3>{item.title}</h3>
                     {item.note ? <p className="muted">{item.note}</p> : null}
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-                      <div style={{ fontWeight: 700 }}>{(item.price ? Number(item.price) : 0)} credits</div>
-                      <button className="btn" onClick={() => buyItem(item.id)}>Buy</button>
-                      {isAdmin ? (
-                        <button
-                          className="btn secondary"
-                          style={{ marginLeft: 8 }}
-                          onClick={async () => {
-                            if (!confirm(`Delete item "${item.title}"? This cannot be undone.`)) return;
-                            setStatus(null);
-                            try {
-                              if (!token) { setStatus('Missing admin token'); return; }
-                              const res = await fetch(`${API_BASE}/api/shop-items/${item.id}`, {
-                                method: 'DELETE',
-                                headers: { Authorization: `Bearer ${token}` }
-                              });
-                              if (!res.ok) {
-                                const txt = await res.text();
-                                setStatus(`Delete failed: ${res.status} ${txt}`);
-                                return;
-                              }
-                              setStatus('Item deleted');
-                              await loadItems();
-                            } catch (err) {
-                              const msg = err instanceof Error ? err.message : String(err);
-                              setStatus(`Delete failed: ${msg}`);
-                            }
-                          }}
-                        >
-                          Delete
-                        </button>
-                      ) : null}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ fontWeight: 700 }}>{item.price ? Number(item.price) : 0}</div>
+                        <img src="/assets/Cassos.png" alt={item.price ? `${item.price} cassos` : 'cassos'} style={{ width: 30, height: 36, display: 'block' }} />
+                      </div>
+                      <div>
+                        <button className="btn" onClick={() => buyItem(item.id)}>Buy</button>
+                      </div>
                     </div>
                   </div>
                 ));

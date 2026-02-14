@@ -9,6 +9,8 @@ export const user = pgTable("user", {
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
   slackId: text("slack_id"),
+  // Whether the user is banned from using the site
+  banned: boolean("banned").default(false).notNull(),
   // New: shop credits balance for the user
   credits: text("credits"),
   role: userRole("role").default("member"),
@@ -80,5 +82,16 @@ export const shopTransactions = pgTable("shop_transactions", {
   userId: text("user_id").notNull(),
   amount: text("amount").notNull(),
   reason: text("reason"),
+  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow()
+});
+
+export const orders = pgTable("orders", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  shopItemId: text("shop_item_id").notNull(),
+  // Slack user id at time of order (nullable)
+  slackId: text("slack_id"),
+  amount: text("amount").notNull(),
+  status: text("status").default("pending"),
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow()
 });

@@ -5,7 +5,8 @@ import path from "node:path";
 import fs from "node:fs";
 import { desc, eq } from "drizzle-orm";
 import { db } from "./db.js";
-import { projects, createdProjects, shopItems, user as users, shopTransactions } from "./schema.js";
+import { projects, createdProjects, shopItems, user as users, shopTransactions, orders } from "./schema.js";
+import { Pool } from "pg";
 
 // Move all env variable assignments here
 const IDENTITY_HOST = process.env.HC_IDENTITY_HOST || "https://auth.hackclub.com";
@@ -18,6 +19,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || "http://localhost:5713";
 const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL || "http://localhost:4000";
+const pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || (() => {
   try {
     return new URL(IDENTITY_REDIRECT_URI).origin;
@@ -28,18 +30,16 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || (() => {
 const DEV_FORCE_ELIGIBLE = process.env.DEV_FORCE_ELIGIBLE?.toLowerCase();
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
 const CACHET_BASE = process.env.CACHET_BASE || "https://cachet.dunkirk.sh";
+// Hackatime integration removed per request.
+// Airtable config for hours lookup (optional)
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || "";
-const AIRTABLE_PAT = process.env.AIRTABLE_PAT || process.env.AIRTABLE_API_KEY || "";
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || "";
 const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME || "";
-const AIRTABLE_SHOP_ITEM_TABLE = process.env.AIRTABLE_SHOP_ITEM_TABLE || process.env.AIRTABLE_SHOP_ITEM_TABLE_NAME || "shop_items";
-const AIRTABLE_SHOP_ITEM_ID_FIELD = process.env.AIRTABLE_SHOP_ITEM_ID_FIELD || "id";
-const AIRTABLE_SHOP_ITEM_TITLE_FIELD = process.env.AIRTABLE_SHOP_ITEM_TITLE_FIELD || "title";
-const AIRTABLE_SHOP_ITEM_NOTE_FIELD = process.env.AIRTABLE_SHOP_ITEM_NOTE_FIELD || "note";
-const AIRTABLE_SHOP_ITEM_IMG_FIELD = process.env.AIRTABLE_SHOP_ITEM_IMG_FIELD || "img";
-const AIRTABLE_SHOP_ITEM_PRICE_FIELD = process.env.AIRTABLE_SHOP_ITEM_PRICE_FIELD || "price";
 const AIRTABLE_EMAIL_FIELD = process.env.AIRTABLE_EMAIL_FIELD || "Email";
 const AIRTABLE_HOURS_FIELD = process.env.AIRTABLE_HOURS_FIELD || "Hours";
+// If your Airtable stores a separate "approved hours" field that differs
+// from total hours, set `AIRTABLE_APPROVED_HOURS_FIELD`. Otherwise we
+// fall back to `AIRTABLE_HOURS_FIELD`.
 const AIRTABLE_APPROVED_HOURS_FIELD = process.env.AIRTABLE_APPROVED_HOURS_FIELD || AIRTABLE_HOURS_FIELD;
 const AIRTABLE_APPROVAL_FIELD = process.env.AIRTABLE_APPROVAL_FIELD || "Approved";
 const AIRTABLE_APPROVAL_VALUE = (process.env.AIRTABLE_APPROVAL_VALUE || "yes").toLowerCase();
@@ -70,45 +70,20 @@ async function fetchAirtableRecordByEmail(email) {
     return null;
   }
 }
-
-// Helper: list all records from an Airtable table (handles simple pagination)
-async function listAirtableTable(tableName) {
-  if (!AIRTABLE_PAT || !AIRTABLE_BASE_ID || !tableName) return [];
-  const out = [];
-  let offset = undefined;
+async function getUserfromReq(req:any){
   try {
-    do {
-      const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`);
-      if (offset) url.searchParams.set('offset', offset);
-      url.searchParams.set('pageSize', '100');
-      const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${AIRTABLE_PAT}` } });
-      if (!res.ok) break;
-      const j = await res.json();
-      if (j.records && Array.isArray(j.records)) out.push(...j.records);
-      offset = j.offset;
-    } while (offset);
-  } catch (err) {
-    console.error('airtable list failed', String(err));
-  }
-  return out;
-}
+    // Use the shared extractToken helper so we handle Authorization header
+    // and cookies consistently (no cookie-parser dependency needed).
+    const token = extractToken(req);
+    if (!token) return null;
 
-async function findAirtableRecordByField(tableName: string, fieldName: string, value: string) {
-  if (!AIRTABLE_PAT || !AIRTABLE_BASE_ID || !tableName || !fieldName) return null;
-  try {
-    const q = `filterByFormula=${encodeURIComponent(`{${fieldName}}='${String(value).replace(/'/g,"\\'")}'`)}`;
-    const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}?${q}&pageSize=1`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${AIRTABLE_PAT}` } });
-    if (!res.ok) return null;
-    const j = await res.json();
-    if (!j.records || !j.records.length) return null;
-    return j.records[0];
-  } catch (err) {
-    console.error('airtable find failed', String(err));
+    const found = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+    return found[0] || null;
+  } catch (e) {
+    console.error('[getUserfromReq] error', String(e));
     return null;
   }
 }
- 
 async function fetchSlackAvatar(opts: { slackId?: string | null; email?: string | null }): Promise<string | undefined> {
   // Try cachet first (no token needed) when we have a Slack user id
   if (opts.slackId) {
@@ -161,6 +136,29 @@ const corsOptions = process.env.NODE_ENV === 'production'
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Middleware: if a request includes an identity token for a user who is banned,
+// block access to the site (returns 403). Allow unauthenticated requests.
+app.use(async (req, res, next) => {
+  try {
+    const token = extractToken(req);
+    if (!token) return next();
+
+    // Allow auth callback and login endpoints to proceed so login flow can still
+    // run (we'll still prevent access once authenticated if banned).
+    if (req.path.startsWith('/api/auth')) return next();
+
+    const found = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+    const u = found[0];
+    if (u && (u as any).banned) {
+      return res.status(403).send('Access denied');
+    }
+    return next();
+  } catch (err) {
+    console.error('[banned middleware] error', String(err));
+    return next();
+  }
+});
 
 // Helper: extract bearer token from Authorization header or `hc_identity` cookie
 function extractToken(req: express.Request): string | undefined {
@@ -488,6 +486,7 @@ app.get("/api/auth/callback", async (req, res) => {
         verificationStatus: string | null;
         identityToken: string | null;
         refreshToken: string | null;
+        banned: boolean;
         updatedAt: Date;
         } = {
         name: pickString(identityName ?? existing[0]?.name),
@@ -499,6 +498,7 @@ app.get("/api/auth/callback", async (req, res) => {
         verificationStatus: pickString(verificationStatus ?? existing[0]?.verificationStatus),
         identityToken: typeof tokenJson.access_token === "string" ? tokenJson.access_token : existing[0]?.identityToken || null,
         refreshToken: typeof tokenJson.refresh_token === "string" ? tokenJson.refresh_token : existing[0]?.refreshToken || null,
+        banned: !effectiveEligible,
           updatedAt: new Date()
       };
 
@@ -511,6 +511,9 @@ app.get("/api/auth/callback", async (req, res) => {
       }
     }
 
+    // Hackatime integration removed: skip linking Hackatime accounts.
+
+    // Prefer a continue URL from OAuth `state` when provided (dev flow).
     let finalContinue = FRONTEND_BASE_URL;
     if (rawState) {
       try {
@@ -561,6 +564,8 @@ app.get("/api/auth/callback", async (req, res) => {
   }
 });
 
+// Hackatime integration removed: endpoints deleted.
+
 app.get("/api/auth/me", async (req, res) => {
   const token = extractToken(req);
   if (!token) return res.status(401).json({ error: "missing bearer token" });
@@ -607,6 +612,8 @@ app.get("/api/auth/profile", async (req, res) => {
       slackId: userRow.slackId,
       role: userRow.role,
       canManageShop,
+      // Indicates whether the shop is available to this user (admins only)
+      shopOpen: canManageShop,
       identityToken: canManageShop ? userRow.identityToken : null,
       identityLinked: Boolean(userRow.id),
       // Expose the user's current credits (number). Stored as text in DB,
@@ -713,24 +720,12 @@ app.listen(PORT, () => {
 // Add this after all app.use and before any catch-all or app.listen
 app.get("/api/shop-items", async (req, res) => {
   try {
-    // If an Airtable shop items table is configured, return items from Airtable.
-    if (AIRTABLE_PAT && AIRTABLE_BASE_ID && AIRTABLE_SHOP_ITEM_TABLE) {
-      const records = await listAirtableTable(AIRTABLE_SHOP_ITEM_TABLE);
-      const items = records.map((rec, idx) => {
-        const f = rec.fields || {};
-        const idRaw = f[AIRTABLE_SHOP_ITEM_ID_FIELD] ?? f.id ?? rec.id;
-        const id = Number(idRaw) || (idx + 1);
-        return {
-          id,
-          title: f[AIRTABLE_SHOP_ITEM_TITLE_FIELD] ?? f.title ?? "",
-          note: f[AIRTABLE_SHOP_ITEM_NOTE_FIELD] ?? f.note ?? null,
-          price: f[AIRTABLE_SHOP_ITEM_PRICE_FIELD] ?? f.price ?? null,
-          img: f[AIRTABLE_SHOP_ITEM_IMG_FIELD] ?? f.img ?? null,
-          href: f.href ?? null,
-        };
-      });
-      return res.json(items);
-    }
+    // The shop is restricted to admin users only.
+    const token = extractToken(req);
+    if (!token) return res.status(401).json({ error: 'shop is closed' });
+    const found = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+    const u = found[0];
+    if (!u || u.role !== 'admin') return res.status(403).json({ error: 'shop is closed' });
 
     const items = await db.select().from(shopItems).orderBy(desc(shopItems.id));
     res.json(items);
@@ -743,40 +738,38 @@ app.get("/api/shop-items", async (req, res) => {
 // Purchase an item: deduct credits and record a transaction.
 app.post("/api/shop/buy", async (req, res) => {
   try {
-    const token = extractToken(req);
-    if (!token) return res.status(401).json({ error: "not authenticated" });
+    const user = await getUserfromReq(req);
+    if (!user) return res.status(401).json({ error: "not authenticated" });
 
-    const [u] = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
-    if (!u) return res.status(401).json({ error: "invalid token" });
+    // Prevent non-admin users from purchasing when shop is closed.
+    if (user.role !== 'admin') {
+      return res.status(403).json({ error: 'shop is closed' });
+    }
 
     const { id } = req.body || {};
     const itemId = Number(id);
     if (!Number.isInteger(itemId)) return res.status(400).json({ error: "invalid item id" });
 
-    let item;
-    // If using Airtable shop items, lookup there
-    if (AIRTABLE_PAT && AIRTABLE_BASE_ID && AIRTABLE_SHOP_ITEM_TABLE) {
-      const rec = await findAirtableRecordByField(AIRTABLE_SHOP_ITEM_TABLE, AIRTABLE_SHOP_ITEM_ID_FIELD, String(itemId));
-      if (!rec) return res.status(404).json({ error: "item not found" });
-      const f = rec.fields || {};
-      item = {
-        id: Number(f[AIRTABLE_SHOP_ITEM_ID_FIELD]) || itemId,
-        title: f[AIRTABLE_SHOP_ITEM_TITLE_FIELD] ?? f.title ?? "",
-        price: f[AIRTABLE_SHOP_ITEM_PRICE_FIELD] ?? f.price ?? 0,
-      };
-    } else {
-      const found = await db.select().from(shopItems).where(eq(shopItems.id, itemId)).limit(1);
-      item = found[0];
-      if (!item) return res.status(404).json({ error: "item not found" });
-    }
+    const found = await db.select().from(shopItems).where(eq(shopItems.id, itemId)).limit(1);
+    const item = found[0];
+    if (!item) return res.status(404).json({ error: "item not found" });
 
     const price = Number(item.price ?? 0) || 0;
-    const current = Number(u.credits ?? 0) || 0;
+    const current = Number(user.credits ?? 0) || 0;
     if (current < price) return res.status(400).json({ error: "insufficient credits", credits: current, price });
 
     const next = current - price;
-    await db.update(users).set({ credits: String(next) }).where(eq(users.id, u.id));
-    await db.insert(shopTransactions).values({ userId: u.id, amount: String(-price), reason: `Purchase: ${item.title}`, createdAt: new Date() });
+
+    // create an order (pending) and deduct credits atomically-ish
+    // insert an orders row and a shop transaction, then update user credits
+    try {
+      await db.insert(orders).values({ userId: user.id, shopItemId: String(item.id), slackId: user.slackId ?? null, amount: String(price), status: 'pending', createdAt: new Date() });
+    } catch (e) {
+      console.error('failed to insert order', String(e));
+    }
+
+    await db.insert(shopTransactions).values({ userId: user.id, amount: String(-price), reason: `Purchase: ${item.title}`, createdAt: new Date() });
+    await db.update(users).set({ credits: String(next) }).where(eq(users.id, user.id));
 
     res.json({ ok: true, credits: next, itemId: itemId });
   } catch (err) {
@@ -785,46 +778,56 @@ app.post("/api/shop/buy", async (req, res) => {
   }
 });
 
+// Return orders for the authenticated user
+app.get('/api/orders', async (req, res) => {
+  try {
+    const user = await getUserfromReq(req);
+    if (!user) return res.status(401).json({ error: 'not authenticated' });
+
+    // Join orders with shop_items to include item title and image so frontend
+    // does not need to perform extra lookups and avoids undefined names.
+    const sql = `
+      SELECT o.id, o.user_id, o.shop_item_id, o.amount, o.status, o.slack_id, o.created_at,
+             s.title AS "itemTitle", s.img AS "itemImg"
+      FROM orders o
+      LEFT JOIN shop_items s ON s.id::text = o.shop_item_id
+      WHERE o.user_id = $1
+      ORDER BY o.id DESC
+    `;
+    const result = await pgPool.query(sql, [user.id]);
+    res.json(result.rows);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    res.status(500).json({ error: 'orders lookup failed', detail: message });
+  }
+});
+
 // Admin-only: create a shop item. Authorize with Bearer identity token.
 app.post("/api/shop-items", async (req, res) => {
   try {
     const auth = req.headers.authorization || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
-    if (!token) return res.status(401).send("Missing Authorization Bearer token");
 
-    const [u] = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
-    if (!u) return res.status(401).send("Invalid token");
-    if (u.role !== "admin") return res.status(403).send("Admin access required");
+    // In production require a valid admin token. In development allow
+    // unauthenticated creation for convenience when the server is running
+    // locally (e.g. using ?dev_admin=1 to show the UI). This is intentionally
+    // permissive only for non-production environments.
+    let adminUser = null;
+    if (token) {
+      const rows = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+      adminUser = rows[0] ?? null;
+      if (!adminUser) return res.status(401).send("Invalid token");
+      if (adminUser.role !== "admin") return res.status(403).send("Admin access required");
+    } else {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(401).send("Missing Authorization Bearer token");
+      }
+      // dev-mode: allow through without user
+      adminUser = null;
+    }
 
     const { title, note, img, href } = req.body || {};
     if (!title || typeof title !== "string") return res.status(400).send("title is required");
-    // If configured to use Airtable for shop items, insert into Airtable table
-    if (AIRTABLE_PAT && AIRTABLE_BASE_ID && AIRTABLE_SHOP_ITEM_TABLE) {
-      const fields: any = {};
-      fields[AIRTABLE_SHOP_ITEM_TITLE_FIELD] = title.trim();
-      if (typeof note === "string") fields[AIRTABLE_SHOP_ITEM_NOTE_FIELD] = note.trim();
-      if (typeof img === "string") fields[AIRTABLE_SHOP_ITEM_IMG_FIELD] = img.trim();
-      if (typeof href === "string") fields.href = href.trim();
-      // Caller may set price later via Airtable UI; insert minimal fields
-      const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_SHOP_ITEM_TABLE)}`;
-      const postRes = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${AIRTABLE_PAT}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
-      if (!postRes.ok) {
-        const txt = await postRes.text();
-        return res.status(500).send(`Failed to create shop item in Airtable: ${txt}`);
-      }
-      const createdJson = await postRes.json();
-      const rec = createdJson.records && createdJson.records[0];
-      const f = rec?.fields || {};
-      const created = {
-        id: Number(f[AIRTABLE_SHOP_ITEM_ID_FIELD]) || rec?.id,
-        title: f[AIRTABLE_SHOP_ITEM_TITLE_FIELD] ?? f.title ?? title,
-        note: f[AIRTABLE_SHOP_ITEM_NOTE_FIELD] ?? f.note ?? null,
-        img: f[AIRTABLE_SHOP_ITEM_IMG_FIELD] ?? f.img ?? null,
-        href: f.href ?? null,
-        price: f[AIRTABLE_SHOP_ITEM_PRICE_FIELD] ?? f.price ?? null,
-      };
-      return res.status(201).json(created);
-    }
 
     const [created] = await db.insert(shopItems).values({
       title: title.trim(),
@@ -841,39 +844,29 @@ app.post("/api/shop-items", async (req, res) => {
   }
 });
 
-// Admin-only: delete a shop item (supports Airtable-backed or Postgres-backed items)
+// Admin-only: delete a shop item by id
 app.delete("/api/shop-items/:id", async (req, res) => {
   try {
     const auth = req.headers.authorization || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
-    if (!token) return res.status(401).send("Missing Authorization Bearer token");
 
-    const [u] = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
-    if (!u) return res.status(401).send("Invalid token");
-    if (u.role !== "admin") return res.status(403).send("Admin access required");
-
-    const idParam = req.params.id;
-    if (!idParam) return res.status(400).send("id required");
-
-    if (AIRTABLE_PAT && AIRTABLE_BASE_ID && AIRTABLE_SHOP_ITEM_TABLE) {
-      // Find the Airtable record by configured id field, then delete the record by record id
-      const rec = await findAirtableRecordByField(AIRTABLE_SHOP_ITEM_TABLE, AIRTABLE_SHOP_ITEM_ID_FIELD, String(idParam));
-      if (!rec) return res.status(404).send("item not found");
-      const recId = rec.id;
-      const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_SHOP_ITEM_TABLE)}/${recId}`;
-      const delRes = await fetch(url, { method: 'DELETE', headers: { Authorization: `Bearer ${AIRTABLE_PAT}` } });
-      if (!delRes.ok) {
-        const txt = await delRes.text();
-        return res.status(500).send(`Failed to delete Airtable record: ${txt}`);
+    let adminUser = null;
+    if (token) {
+      const rows = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+      adminUser = rows[0] ?? null;
+      if (!adminUser) return res.status(401).send("Invalid token");
+      if (adminUser.role !== "admin") return res.status(403).send("Admin access required");
+    } else {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(401).send("Missing Authorization Bearer token");
       }
-      return res.json({ ok: true });
     }
 
-    // Postgres-backed: delete by numeric id
-    const idNum = Number(idParam);
-    if (!Number.isInteger(idNum)) return res.status(400).send("invalid id");
-    await db.delete(shopItems).where(eq(shopItems.id, idNum));
-    return res.json({ ok: true });
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).send("Invalid id");
+
+    await db.delete(shopItems).where(eq(shopItems.id, id));
+    res.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).send(`Failed to delete shop item: ${message}`);
