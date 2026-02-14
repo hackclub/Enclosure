@@ -168,20 +168,33 @@ export default function ShopPage() {
           </div>
           <div style={{ position: 'relative', marginBottom: 8 }}>
             <h2 style={{ margin: 0, textAlign: 'center' }}>Shop</h2>
-            {typeof credits === 'number' ? (
-              <div style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)' }}>
+            <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', gap: 12, alignItems: 'center', zIndex: 2000 }}>
+              {typeof credits === 'number' ? (
                 <div style={{
-                  display: 'inline-block',
-                  padding: '10px 16px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 12px',
                   borderRadius: 12,
                   border: '2px solid #b45309',
                   background: '#fff7ed',
                   color: '#b45309',
                   fontWeight: 800,
                   fontSize: 18,
-                }}>{credits} credits</div>
-              </div>
-            ) : null}
+                }}>
+                  <div style={{ lineHeight: 1 }}>{credits}</div>
+                  <img src="/assets/Cassos.png" alt="cassos" style={{ width: 34, height: 40, display: 'block' }} />
+                </div>
+              ) : null}
+              <button
+                className="btn secondary"
+                onClick={() => { window.location.href = '/orders'; }}
+                type="button"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                View your orders
+              </button>
+            </div>
           </div>
           <div className="section-note">Browse the full shop list.</div>
           <div className="grid shop-grid">
@@ -224,9 +237,14 @@ export default function ShopPage() {
 
                     <h3>{item.title}</h3>
                     {item.note ? <p className="muted">{item.note}</p> : null}
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-                      <div style={{ fontWeight: 700 }}>{(item.price ? Number(item.price) : 0)} credits</div>
-                      <button className="btn" onClick={() => buyItem(item.id)}>Buy</button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ fontWeight: 700 }}>{item.price ? Number(item.price) : 0}</div>
+                        <img src="/assets/Cassos.png" alt={item.price ? `${item.price} cassos` : 'cassos'} style={{ width: 30, height: 36, display: 'block' }} />
+                      </div>
+                      <div>
+                        <button className="btn" onClick={() => buyItem(item.id)}>Buy</button>
+                      </div>
                     </div>
                   </div>
                 ));
