@@ -5,7 +5,8 @@ import path from "node:path";
 import fs from "node:fs";
 import { desc, eq } from "drizzle-orm";
 import { db } from "./db.js";
-import { projects, createdProjects, shopItems, user as users, shopTransactions } from "./schema.js";
+import { projects, createdProjects, shopItems, user as users, shopTransactions, orders } from "./schema.js";
+import { Pool } from "pg";
 // Move all env variable assignments here
 const IDENTITY_HOST = process.env.HC_IDENTITY_HOST || "https://auth.hackclub.com";
 const IDENTITY_CLIENT_ID = process.env.HC_IDENTITY_CLIENT_ID || "";
@@ -17,6 +18,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || "http://localhost:5713";
 const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL || "http://localhost:4000";
+const pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || (() => {
     try {
         return new URL(IDENTITY_REDIRECT_URI).origin;
@@ -28,7 +30,7 @@ const SERVER_BASE_URL = process.env.SERVER_BASE_URL || (() => {
 const DEV_FORCE_ELIGIBLE = process.env.DEV_FORCE_ELIGIBLE?.toLowerCase();
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
 const CACHET_BASE = process.env.CACHET_BASE || "https://cachet.dunkirk.sh";
-// Hackatime integration removed
+// Hackatime integration removed per request.
 // Airtable config for hours lookup (optional)
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY || "";
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || "";
@@ -68,6 +70,21 @@ async function fetchAirtableRecordByEmail(email) {
     }
     catch (err) {
         console.error('airtable lookup failed', String(err));
+        return null;
+    }
+}
+async function getUserfromReq(req) {
+    try {
+        // Use the shared extractToken helper so we handle Authorization header
+        // and cookies consistently (no cookie-parser dependency needed).
+        const token = extractToken(req);
+        if (!token)
+            return null;
+        const found = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+        return found[0] || null;
+    }
+    catch (e) {
+        console.error('[getUserfromReq] error', String(e));
         return null;
     }
 }
@@ -120,6 +137,29 @@ const corsOptions = process.env.NODE_ENV === 'production'
     : { origin: true, credentials: true };
 app.use(cors(corsOptions));
 app.use(express.json());
+// Middleware: if a request includes an identity token for a user who is banned,
+// block access to the site (returns 403). Allow unauthenticated requests.
+app.use(async (req, res, next) => {
+    try {
+        const token = extractToken(req);
+        if (!token)
+            return next();
+        // Allow auth callback and login endpoints to proceed so login flow can still
+        // run (we'll still prevent access once authenticated if banned).
+        if (req.path.startsWith('/api/auth'))
+            return next();
+        const found = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+        const u = found[0];
+        if (u && u.banned) {
+            return res.status(403).send('Access denied');
+        }
+        return next();
+    }
+    catch (err) {
+        console.error('[banned middleware] error', String(err));
+        return next();
+    }
+});
 // Helper: extract bearer token from Authorization header or `hc_identity` cookie
 function extractToken(req) {
     const auth = req.headers.authorization;
@@ -430,7 +470,7 @@ app.get("/api/auth/callback", async (req, res) => {
                 verificationStatus: pickString(verificationStatus ?? existing[0]?.verificationStatus),
                 identityToken: typeof tokenJson.access_token === "string" ? tokenJson.access_token : existing[0]?.identityToken || null,
                 refreshToken: typeof tokenJson.refresh_token === "string" ? tokenJson.refresh_token : existing[0]?.refreshToken || null,
-                // hackatime fields removed
+                banned: !effectiveEligible,
                 updatedAt: new Date()
             };
             if (existing.length) {
@@ -442,7 +482,7 @@ app.get("/api/auth/callback", async (req, res) => {
                 console.log("[auth] user inserted", { id: idValue });
             }
         }
-        // Hackatime integration removed; continue normal redirect flow
+        // Hackatime integration removed: skip linking Hackatime accounts.
         // Prefer a continue URL from OAuth `state` when provided (dev flow).
         let finalContinue = FRONTEND_BASE_URL;
         if (rawState) {
@@ -493,7 +533,7 @@ app.get("/api/auth/callback", async (req, res) => {
         res.status(500).json({ error: "auth callback failed", detail: message });
     }
 });
-// Hackatime endpoints removed
+// Hackatime integration removed: endpoints deleted.
 app.get("/api/auth/me", async (req, res) => {
     const token = extractToken(req);
     if (!token)
@@ -539,6 +579,8 @@ app.get("/api/auth/profile", async (req, res) => {
             slackId: userRow.slackId,
             role: userRow.role,
             canManageShop,
+            // Indicates whether the shop is available to this user (admins only)
+            shopOpen: canManageShop,
             identityToken: canManageShop ? userRow.identityToken : null,
             identityLinked: Boolean(userRow.id),
             // Expose the user's current credits (number). Stored as text in DB,
@@ -645,6 +687,14 @@ app.listen(PORT, () => {
 // Add this after all app.use and before any catch-all or app.listen
 app.get("/api/shop-items", async (req, res) => {
     try {
+        // The shop is restricted to admin users only.
+        const token = extractToken(req);
+        if (!token)
+            return res.status(401).json({ error: 'shop is closed' });
+        const found = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+        const u = found[0];
+        if (!u || u.role !== 'admin')
+            return res.status(403).json({ error: 'shop is closed' });
         const items = await db.select().from(shopItems).orderBy(desc(shopItems.id));
         res.json(items);
     }
@@ -653,18 +703,95 @@ app.get("/api/shop-items", async (req, res) => {
         res.status(500).send(`Failed to load shop items: ${message}`);
     }
 });
+// Purchase an item: deduct credits and record a transaction.
+app.post("/api/shop/buy", async (req, res) => {
+    try {
+        const user = await getUserfromReq(req);
+        if (!user)
+            return res.status(401).json({ error: "not authenticated" });
+        // Prevent non-admin users from purchasing when shop is closed.
+        if (user.role !== 'admin') {
+            return res.status(403).json({ error: 'shop is closed' });
+        }
+        const { id } = req.body || {};
+        const itemId = Number(id);
+        if (!Number.isInteger(itemId))
+            return res.status(400).json({ error: "invalid item id" });
+        const found = await db.select().from(shopItems).where(eq(shopItems.id, itemId)).limit(1);
+        const item = found[0];
+        if (!item)
+            return res.status(404).json({ error: "item not found" });
+        const price = Number(item.price ?? 0) || 0;
+        const current = Number(user.credits ?? 0) || 0;
+        if (current < price)
+            return res.status(400).json({ error: "insufficient credits", credits: current, price });
+        const next = current - price;
+        // create an order (pending) and deduct credits atomically-ish
+        // insert an orders row and a shop transaction, then update user credits
+        try {
+            await db.insert(orders).values({ userId: user.id, shopItemId: String(item.id), slackId: user.slackId ?? null, amount: String(price), status: 'pending', createdAt: new Date() });
+        }
+        catch (e) {
+            console.error('failed to insert order', String(e));
+        }
+        await db.insert(shopTransactions).values({ userId: user.id, amount: String(-price), reason: `Purchase: ${item.title}`, createdAt: new Date() });
+        await db.update(users).set({ credits: String(next) }).where(eq(users.id, user.id));
+        res.json({ ok: true, credits: next, itemId: itemId });
+    }
+    catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        res.status(500).json({ error: "purchase failed", detail: message });
+    }
+});
+// Return orders for the authenticated user
+app.get('/api/orders', async (req, res) => {
+    try {
+        const user = await getUserfromReq(req);
+        if (!user)
+            return res.status(401).json({ error: 'not authenticated' });
+        // Join orders with shop_items to include item title and image so frontend
+        // does not need to perform extra lookups and avoids undefined names.
+        const sql = `
+      SELECT o.id, o.user_id, o.shop_item_id, o.amount, o.status, o.slack_id, o.created_at,
+             s.title AS "itemTitle", s.img AS "itemImg"
+      FROM orders o
+      LEFT JOIN shop_items s ON s.id::text = o.shop_item_id
+      WHERE o.user_id = $1
+      ORDER BY o.id DESC
+    `;
+        const result = await pgPool.query(sql, [user.id]);
+        res.json(result.rows);
+    }
+    catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        res.status(500).json({ error: 'orders lookup failed', detail: message });
+    }
+});
 // Admin-only: create a shop item. Authorize with Bearer identity token.
 app.post("/api/shop-items", async (req, res) => {
     try {
         const auth = req.headers.authorization || "";
         const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
-        if (!token)
-            return res.status(401).send("Missing Authorization Bearer token");
-        const [u] = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
-        if (!u)
-            return res.status(401).send("Invalid token");
-        if (u.role !== "admin")
-            return res.status(403).send("Admin access required");
+        // In production require a valid admin token. In development allow
+        // unauthenticated creation for convenience when the server is running
+        // locally (e.g. using ?dev_admin=1 to show the UI). This is intentionally
+        // permissive only for non-production environments.
+        let adminUser = null;
+        if (token) {
+            const rows = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+            adminUser = rows[0] ?? null;
+            if (!adminUser)
+                return res.status(401).send("Invalid token");
+            if (adminUser.role !== "admin")
+                return res.status(403).send("Admin access required");
+        }
+        else {
+            if (process.env.NODE_ENV === 'production') {
+                return res.status(401).send("Missing Authorization Bearer token");
+            }
+            // dev-mode: allow through without user
+            adminUser = null;
+        }
         const { title, note, img, href } = req.body || {};
         if (!title || typeof title !== "string")
             return res.status(400).send("title is required");
@@ -680,5 +807,35 @@ app.post("/api/shop-items", async (req, res) => {
     catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         res.status(500).send(`Failed to create shop item: ${message}`);
+    }
+});
+// Admin-only: delete a shop item by id
+app.delete("/api/shop-items/:id", async (req, res) => {
+    try {
+        const auth = req.headers.authorization || "";
+        const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+        let adminUser = null;
+        if (token) {
+            const rows = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+            adminUser = rows[0] ?? null;
+            if (!adminUser)
+                return res.status(401).send("Invalid token");
+            if (adminUser.role !== "admin")
+                return res.status(403).send("Admin access required");
+        }
+        else {
+            if (process.env.NODE_ENV === 'production') {
+                return res.status(401).send("Missing Authorization Bearer token");
+            }
+        }
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id))
+            return res.status(400).send("Invalid id");
+        await db.delete(shopItems).where(eq(shopItems.id, id));
+        res.json({ ok: true });
+    }
+    catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        res.status(500).send(`Failed to delete shop item: ${message}`);
     }
 });
