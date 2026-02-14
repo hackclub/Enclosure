@@ -45,10 +45,10 @@ const faqItems = [
   },
   {
     key: "hackatime",
-    question: "Is Lapse required?",
+    question: "Is Lapse/Hackatime required?",
     answer: (
       <p>
-        =Lapse is required only if you want to earn prizes from the shop; if you just want your enclosure printed and shipped you don’t need to track time.
+        Lapse/Hackatime is required only if you want to earn prizes from the shop; if you just want your enclosure printed and shipped you don’t need to track time.
         To qualify for shop rewards you must also maintain a short project journal on Gist and include a link to it with your submission.
       </p>
     ),
@@ -194,7 +194,7 @@ function Hero() {
         </div>
         <p>
           <b>
-            Design your cover, we 3D-print and ship it! Make it protective,
+            Design your enclosure, we 3D-print and ship it! Make it protective,
             weird, minimal, chunky, or cursed.
           </b>
         </p>
@@ -315,14 +315,14 @@ function Paths() {
             </p>
 
             <div style={{ marginTop: 8, color: '#ffd166', fontWeight: 800 }}>
-              📓 Journaling required — create a project journal on <a href="https://gist.github.com/" target="_blank" rel="noreferrer" style={{ color: 'white' }}>Gist</a> and include a link in your submission.
+               Journaling required — create a project journal on <a href="https://gist.github.com/" target="_blank" rel="noreferrer" style={{ color: 'white' }}>Gist</a> and include a link in your submission.
             </div>
 
             <div style={{ marginTop: 10 }}>
               <strong>What to expect</strong>
               <ol style={{ marginTop: 8 }}>
                 <li>Sign in to Hackatime (or Lapse) and enable tracking for your sessions.</li>
-                <li>Accumulate hours — different tiers unlock different shop rewards.</li>
+                <li>Accumulate hours — earn cassos and get shop rewards.</li>
                 <li>When you reach a tier, you'll be eligible to claim items from the shop.</li>
                 <li>Verification and fulfillment may take 1–3 weeks after claiming.</li>
               </ol>
@@ -628,27 +628,28 @@ export default function App() {
       >
         {/* Credits display to the left of the avatar */}
           {typeof credits === "number" ? (
-          <div
-            style={{
-              position: "absolute",
-              right: 76,
-              top: 12,
-              background: "#fff7ed",
-              
-              border: "2px solid #b45309",
-              fontWeight: 800,
-              color: "#b45309",
-              boxShadow: "2px 2px 0 #000",
-              zIndex: 2100,
-              fontSize: 18,
-              letterSpacing: 0.2,
-              padding: "10px 16px",
-              borderRadius: 12,
-            }}
-          >
-            {credits} credits
-          </div>
-        ) : null}
+            <div style={{ position: "absolute", right: 76, top: 12, zIndex: 2100 }} title={String(credits)}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 10px",
+                  background: "#fff",
+                  border: "2px solid #b45309",
+                  borderRadius: 12,
+                  boxShadow: "2px 2px 0 #000",
+                }}
+              >
+                <div style={{ fontWeight: 800, color: "#b45309", fontSize: 16, minWidth: 28, textAlign: "center" }}>{credits}</div>
+                <img
+                  src="/assets/Cassos.png"
+                  alt={typeof credits === 'number' ? `${credits} cassos` : 'cassos'}
+                  style={{ width: 36, height: 42, display: 'block' }}
+                />
+              </div>
+            </div>
+          ) : null}
         {slackAvatarUrl ? (
           <img
             src={slackAvatarUrl}

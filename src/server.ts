@@ -6,6 +6,7 @@ import fs from "node:fs";
 import { desc, eq } from "drizzle-orm";
 import { db } from "./db.js";
 import { projects, createdProjects, shopItems, user as users, shopTransactions } from "./schema.js";
+import { Pool } from "pg";
 
 // Move all env variable assignments here
 const IDENTITY_HOST = process.env.HC_IDENTITY_HOST || "https://auth.hackclub.com";
@@ -18,6 +19,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL || "http://localhost:5713";
 const BACKEND_BASE_URL = process.env.BACKEND_BASE_URL || "http://localhost:4000";
+const pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
 const SERVER_BASE_URL = process.env.SERVER_BASE_URL || (() => {
   try {
     return new URL(IDENTITY_REDIRECT_URI).origin;
@@ -68,7 +70,13 @@ async function fetchAirtableRecordByEmail(email) {
     return null;
   }
 }
- 
+async function getUserfromReq(req:any){
+  const authHeader = req.headers?.authorization;
+  const cookieToken = req.cookies?.hc_identity || req.headers['x-hc-identity'];
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : cookieToken;
+  if (!token) return null;
+  const client = 
+}
 async function fetchSlackAvatar(opts: { slackId?: string | null; email?: string | null }): Promise<string | undefined> {
   // Try cachet first (no token needed) when we have a Slack user id
   if (opts.slackId) {
