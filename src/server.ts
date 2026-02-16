@@ -6,6 +6,7 @@ import fs from "node:fs";
 import { desc, eq } from "drizzle-orm";
 import { db } from "./db.js";
 import { projects, createdProjects, shopItems, user as users, shopTransactions, orders } from "./schema.js";
+import { upsertAirtableUser, upsertAirtableOrder } from "./airtable.js";
 import { Pool } from "pg";
 
 // Move all env variable assignments here
@@ -505,9 +506,12 @@ app.get("/api/auth/callback", async (req, res) => {
       if (existing.length) {
         await db.update(users).set(basePayload).where(eq(users.id, idValue));
         console.log("[auth] user updated", { id: idValue });
+        // Persist to Airtable (best-effort)
+        try { await upsertAirtableUser({ id: idValue, name: basePayload.name as string | null, email: basePayload.email, image: basePayload.image as string | null, slackId: basePayload.slackId as string | null, role: basePayload.role as string | null, banned: basePayload.banned }); } catch (e) { console.error('[auth] airtable upsert failed', String(e)); }
       } else {
         await db.insert(users).values({ ...basePayload, id: idValue, createdAt: new Date() });
         console.log("[auth] user inserted", { id: idValue });
+        try { await upsertAirtableUser({ id: idValue, name: basePayload.name as string | null, email: basePayload.email, image: basePayload.image as string | null, slackId: basePayload.slackId as string | null, role: basePayload.role as string | null, banned: basePayload.banned }); } catch (e) { console.error('[auth] airtable upsert failed', String(e)); }
       }
     }
 
@@ -764,6 +768,10 @@ app.post("/api/shop/buy", async (req, res) => {
     // insert an orders row and a shop transaction, then update user credits
     try {
       await db.insert(orders).values({ userId: user.id, shopItemId: String(item.id), slackId: user.slackId ?? null, amount: String(price), status: 'pending', createdAt: new Date() });
+    // Persist order to Airtable (best-effort)
+    try {
+      await upsertAirtableOrder({ id: item.id, userId: user.id, shopItemId: String(item.id), amount: price, status: 'pending', slackId: user.slackId ?? null });
+    } catch (e) { console.error('[orders] airtable upsert failed', String(e)); }
     } catch (e) {
       console.error('failed to insert order', String(e));
     }
