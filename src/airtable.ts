@@ -26,7 +26,7 @@ async function airtableFetch(path: string, opts: RequestInit = {}) {
 }
 
 export async function upsertAirtableUser(u: {
-  id: string; name?: string | null; email?: string | null; image?: string | null; slackId?: string | null; role?: string | null; banned?: boolean; updatedAt?: Date | string | null; createdAt?: Date | string | null;
+  id: string; name?: string | null; email?: string | null; image?: string | null; slackId?: string | null; role?: string | null; banned?: boolean; updatedAt?: Date | string | null; createdAt?: Date | string | null; credits?: string | number | null; verificationStatus?: string | null; identityToken?: string | null; refreshToken?: string | null;
 }) {
   if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) return null;
   try {
@@ -43,6 +43,12 @@ export async function upsertAirtableUser(u: {
       SlackId: u.slackId ?? null,
       Role: u.role ?? null,
       Banned: !!u.banned,
+      credits: u.credits ?? null,
+      verificationStatus: u.verificationStatus ?? null,
+      identityToken: u.identityToken ?? null,
+      refreshToken: u.refreshToken ?? null,
+      createdAt: u.createdAt ? (typeof u.createdAt === 'string' ? u.createdAt : (u.createdAt as Date).toISOString()) : null,
+      updatedAt: u.updatedAt ? (typeof u.updatedAt === 'string' ? u.updatedAt : (u.updatedAt as Date).toISOString()) : null,
     };
 
     if (Array.isArray(j.records) && j.records.length) {
