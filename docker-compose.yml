@@ -24,8 +24,29 @@ services:
       HC_IDENTITY_REDIRECT_URI: ${HC_IDENTITY_REDIRECT_URI}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5713}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+      # Airtable configuration (provide these in your host env or .env file)
+      AIRTABLE_API_KEY: ${AIRTABLE_API_KEY}
+      AIRTABLE_BASE_ID: ${AIRTABLE_BASE_ID}
+      AIRTABLE_USERS_TABLE: ${AIRTABLE_USERS_TABLE:-Users}
+      AIRTABLE_ORDERS_TABLE: ${AIRTABLE_ORDERS_TABLE:-Orders}
+      AIRTABLE_WEBHOOK_SECRET: ${AIRTABLE_WEBHOOK_SECRET}
     depends_on:
       - db
+
+  airtable-sync:
+    build: .
+    command: ["node", "scripts/watch_postgres_and_sync.mjs"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      NODE_ENV: production
+      AIRTABLE_API_KEY: ${AIRTABLE_API_KEY}
+      AIRTABLE_BASE_ID: ${AIRTABLE_BASE_ID}
+      AIRTABLE_USERS_TABLE: ${AIRTABLE_USERS_TABLE:-Users}
+      AIRTABLE_ORDERS_TABLE: ${AIRTABLE_ORDERS_TABLE:-Orders}
+      AIRTABLE_WEBHOOK_SECRET: ${AIRTABLE_WEBHOOK_SECRET}
+    depends_on:
+      - db
+    restart: unless-stopped
 
 volumes:
   db_data:

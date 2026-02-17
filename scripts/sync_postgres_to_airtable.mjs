@@ -74,20 +74,69 @@ async function airtablePatch(table, recId, fields) {
 }
 
 async function upsertUser(u) {
-  const fields = {
-    identityId: u.id,
-    Name: u.name ?? null,
-    Email: u.email ?? null,
-    Image: u.image ?? null,
-    SlackId: u.slackId ?? null,
-    role: u.role ?? null,
-    Banned: !!u.banned,
-  };
-  const formula = `{identityId}='${String(u.id).replace(/'/g, "\\'")}'`;
-  const payload = fields;
-  const found = await airtableFindRecord(AIRTABLE_USERS_TABLE, formula).catch(() => null);
-  if (found) return airtablePatch(AIRTABLE_USERS_TABLE, found.id, payload);
-  return airtableCreate(AIRTABLE_USERS_TABLE, payload);
+    // Normalize credits: Airtable expects a Number for the `credits` field.
+    let creditsValue = null;
+    if (u.credits !== undefined && u.credits !== null) {
+      const s = String(u.credits).trim();
+      if (s !== '' && !Number.isNaN(Number(s))) creditsValue = Number(s);
+    }
+    const fields = {
+      identityId: u.id,
+      Name: u.name ?? null,
+      Email: u.email ?? null,
+      Image: u.image ?? null,
+      SlackId: u.slackId ?? null,
+      role: u.role ?? null,
+      Banned: !!u.banned,
+      credits: creditsValue,
+      verificationStatus: u.verificationStatus ?? null,
+      identityToken: u.identityToken ?? null,
+      refreshToken: u.refreshToken ?? null,
+      createdAt: u.createdAt ? (u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt)) : null,
+      updatedAt: u.updatedAt ? (u.updatedAt instanceof Date ? u.updatedAt.toISOString() : String(u.updatedAt)) : null,
+    };
+    const formula = `{identityId}='${String(u.id).replace(/'/g, "\\'")}'`;
+    const payload = fields;
+    const dropTokenFields = (p) => {
+      const copy = Object.assign({}, p);
+      delete copy.verificationStatus;
+      delete copy.identityToken;
+      delete copy.refreshToken;
+      delete copy.credits;
+      delete copy.createdAt;
+      delete copy.updatedAt;
+      return copy;
+    };
+    console.log('[sync] user payload tokens present?', { id: u.id, identityToken: !!u.identityToken, refreshToken: !!u.refreshToken });
+    const found = await airtableFindRecord(AIRTABLE_USERS_TABLE, formula).catch(() => null);
+    if (found) {
+      try {
+        return await airtablePatch(AIRTABLE_USERS_TABLE, found.id, payload);
+      } catch (err) {
+        const msg = String(err);
+        if (msg.includes('UNKNOWN_FIELD_NAME')) {
+          console.log('[sync] Airtable unknown field; retrying without tokens for', u.id);
+          const payload2 = dropTokenFields(payload);
+          const res = await airtablePatch(AIRTABLE_USERS_TABLE, found.id, payload2);
+          console.log('[sync] retried patch result id=', found.id);
+          return res;
+        }
+        throw err;
+      }
+    }
+    try {
+      return await airtableCreate(AIRTABLE_USERS_TABLE, payload);
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes('UNKNOWN_FIELD_NAME')) {
+        console.log('[sync] Airtable unknown field on create; retrying without tokens for', u.id);
+        const payload2 = dropTokenFields(payload);
+        const res = await airtableCreate(AIRTABLE_USERS_TABLE, payload2);
+        console.log('[sync] retried create result id=', res && res.records && res.records[0] && res.records[0].id);
+        return res;
+      }
+      throw err;
+    }
 }
 
 async function upsertOrder(o) {
@@ -100,11 +149,52 @@ async function upsertOrder(o) {
   };
   const formula = `{OrderId}='${String(o.id).replace(/'/g, "\\'")}'`;
   const found = await airtableFindRecord(AIRTABLE_ORDERS_TABLE, formula).catch(() => null);
-  // coerce Amount to number if possible
-  const maybeNum = Number(fields.Amount);
+  // coerce Amount from DB value to number if possible
+  const maybeNum = Number(o.amount);
   if (Number.isFinite(maybeNum)) fields.Amount = maybeNum;
-  if (found) return airtablePatch(AIRTABLE_ORDERS_TABLE, found.id, fields);
-  return airtableCreate(AIRTABLE_ORDERS_TABLE, fields);
+  // sanitize: remove undefined/null fields so Airtable doesn't try to create empty values
+  const sanitize = (obj) => {
+    const out = {};
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      if (v !== undefined && v !== null && String(v) !== '') out[k] = v;
+    }
+    return out;
+  };
+  // Try patch/create and if Airtable rejects due to single-select option creation,
+  // retry without the Amount field so other fields can be updated.
+  if (found) {
+    try {
+      const payload = sanitize(fields);
+      console.log('[sync] patching order', o.id, payload);
+      return await airtablePatch(AIRTABLE_ORDERS_TABLE, found.id, payload);
+    } catch (err) {
+      const msg = String(err);
+      if (msg.includes('INVALID_MULTIPLE_CHOICE_OPTIONS') || msg.includes('Insufficient permissions to create new select option')) {
+        console.log('[sync] Airtable rejects new select option for Amount; retrying without Amount for order', o.id);
+        const copy = sanitize(Object.assign({}, fields));
+        delete copy.Amount;
+        console.log('[sync] retry patch without Amount', o.id, copy);
+        return await airtablePatch(AIRTABLE_ORDERS_TABLE, found.id, copy);
+      }
+      throw err;
+    }
+  }
+  try {
+    const payload = sanitize(fields);
+    console.log('[sync] creating order', o.id, payload);
+    return await airtableCreate(AIRTABLE_ORDERS_TABLE, payload);
+  } catch (err) {
+    const msg = String(err);
+    if (msg.includes('INVALID_MULTIPLE_CHOICE_OPTIONS') || msg.includes('Insufficient permissions to create new select option')) {
+      console.log('[sync] Airtable rejects new select option for Amount on create; retrying without Amount for order', o.id);
+      const copy = sanitize(Object.assign({}, fields));
+      delete copy.Amount;
+      console.log('[sync] retry create without Amount', o.id, copy);
+      return await airtableCreate(AIRTABLE_ORDERS_TABLE, copy);
+    }
+    throw err;
+  }
 }
 
 async function main() {
@@ -112,7 +202,7 @@ async function main() {
   const client = await pool.connect();
   try {
     // proceed to upsert using explicit field mappings
-    const res = await client.query('SELECT id, name, email, image, slack_id as "slackId", role, banned FROM "user"');
+    const res = await client.query('SELECT id, name, email, image, slack_id as "slackId", role, banned, credits, verification_status as "verificationStatus", identity_token as "identityToken", refresh_token as "refreshToken", created_at as "createdAt", updated_at as "updatedAt" FROM "user"');
     for (const r of res.rows) {
       try {
         await upsertUser(r);

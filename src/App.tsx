@@ -15,6 +15,18 @@ const API_BASE = (() => {
 })();
 
 const CACHET_BASE = "https://cachet.dunkirk.sh";
+const CDN_BASE = import.meta.env.VITE_CDN_BASE || "";
+function toCdnUrl(path: string | null | undefined) {
+  if (!path) return "";
+  const s = String(path).trim();
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) return s;
+  if (!CDN_BASE) return s;
+  return `${CDN_BASE.replace(/\/$/, "")}/${s.replace(/^\//, "")}`;
+}
+// Placeholder CDN links (configurable via Vite env)
+const PLACEHOLDER_LOGO = import.meta.env.VITE_PLACEHOLDER_LOGO || "https://placehold.co/750x200?text=Enclosure+Logo";
+const PLACEHOLDER_COVER = import.meta.env.VITE_PLACEHOLDER_COVER || "https://placehold.co/180x120?text=Cover";
 
 const faqItems = [
   {
@@ -166,28 +178,28 @@ function Hero() {
         <div className="hero-visual">
           <img
             className="hero-logo"
-            src="assets/logo.png"
+            src={PLACEHOLDER_LOGO}
             alt="Enclosure logo"
           />
           <div className="covers-wrap">
             <img
               className="cover-img cover-1"
-              src="assets/covers/Case.png"
+              src={PLACEHOLDER_COVER}
               alt="Enclosure cover example 1"
             />
             <img
               className="cover-img cover-2"
-              src="assets/covers/case1.png"
+              src={PLACEHOLDER_COVER}
               alt="Enclosure cover example 2"
             />
             <img
               className="cover-img cover-3"
-              src="assets/covers/Case2png.png"
+              src={PLACEHOLDER_COVER}
               alt="Enclosure cover example 3"
             />
             <img
               className="cover-img cover-4"
-              src="assets/covers/Case3-.png"
+              src={PLACEHOLDER_COVER}
               alt="Enclosure cover example 4"
             />
           </div>
@@ -643,7 +655,7 @@ export default function App() {
               >
                 <div style={{ fontWeight: 800, color: "#b45309", fontSize: 16, minWidth: 28, textAlign: "center" }}>{credits}</div>
                 <img
-                  src="/assets/Cassos.png"
+                  src={PLACEHOLDER_COVER}
                   alt={typeof credits === 'number' ? `${credits} cassos` : 'cassos'}
                   style={{ width: 36, height: 42, display: 'block' }}
                 />
@@ -701,7 +713,7 @@ export default function App() {
             width: 220,
             zIndex: 999,
           }}
-          src="https://assets.hackclub.com/flag-orpheus-top.svg"
+          src={PLACEHOLDER_LOGO}
           alt="Hack Club"
         />
       </a>
