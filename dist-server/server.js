@@ -710,15 +710,16 @@ app.post('/api/webhook/airtable', async (req, res) => {
                 const idNum = Number(orderId);
                 const exists = await db.select().from(orders).where(eq(orders.id, idNum)).limit(1);
                 if (exists.length) {
-                    await db.update(orders).set({ userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, updatedAt: new Date() }).where(eq(orders.id, idNum));
+                    await db.update(orders).set({ userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null }).where(eq(orders.id, idNum));
                 }
                 else {
-                    await db.insert(orders).values({ id: idNum, userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date(), updatedAt: new Date() });
+                    // Drizzle's insert typing for serial pk may not allow `id` in values; cast to any when forcing id
+                    await db.insert(orders).values({ id: idNum, userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date() });
                 }
                 return res.json({ ok: true });
             }
             // fallback: insert new order row without forcing id
-            await db.insert(orders).values({ userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date(), updatedAt: new Date() });
+            await db.insert(orders).values({ userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date() });
             return res.json({ ok: true });
         }
         return res.status(400).json({ error: 'unsupported table' });
@@ -837,7 +838,7 @@ app.post("/api/shop/buy", async (req, res) => {
         try {
             const [createdOrder] = await db.insert(orders).values({ userId: user.id, shopItemId: String(item.id), slackId: user.slackId ?? null, amount: String(price), status: 'pending', createdAt: new Date() }).returning();
             try {
-                await upsertAirtableOrder({ id: createdOrder.id ?? createdOrder.ID ?? createdOrder.orderId ?? item.id, userId: user.id, shopItemId: String(item.id), amount: price, status: 'pending', slackId: user.slackId ?? null, createdAt: createdOrder.createdAt ?? new Date() });
+                await upsertAirtableOrder({ id: createdOrder.id ?? item.id, userId: user.id, shopItemId: String(item.id), amount: price, status: 'pending', slackId: user.slackId ?? null, createdAt: createdOrder.createdAt ?? new Date() });
             }
             catch (e) {
                 console.error('[orders] airtable upsert failed', String(e));

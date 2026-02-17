@@ -7,7 +7,12 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 # Use `npm ci` when a lockfile exists, otherwise fall back to `npm install`.
 # Skip running lifecycle scripts now (e.g. postinstall) so build runs after source is copied.
-RUN sh -c 'if [ -f package-lock.json ]; then npm ci --ignore-scripts; else npm install --ignore-scripts; fi'
+RUN set -eux; \
+  if [ -f package-lock.json ]; then \
+    for i in 1 2 3; do npm ci --ignore-scripts && break || (echo "npm ci failed, retrying ($i)" && sleep $((i*2))); done; \
+  else \
+    for i in 1 2 3; do npm install --ignore-scripts && break || (echo "npm install failed, retrying ($i)" && sleep $((i*2))); done; \
+  fi
 
 # Copy source and build both client and server
 COPY . .
@@ -27,7 +32,12 @@ COPY --from=builder /app/dist-server /app/dist-server
 COPY package.json package-lock.json* ./
 # In the runtime image prefer `npm ci` when lockfile present, otherwise install.
 # Skip lifecycle scripts here to avoid running build steps (we already copied built artifacts).
-RUN sh -c 'if [ -f package-lock.json ]; then npm ci --only=production --ignore-scripts; else npm install --production --ignore-scripts; fi'
+RUN set -eux; \
+  if [ -f package-lock.json ]; then \
+    for i in 1 2 3; do npm ci --only=production --ignore-scripts && break || (echo "npm ci (prod) failed, retrying ($i)" && sleep $((i*2))); done; \
+  else \
+    for i in 1 2 3; do npm install --production --ignore-scripts && break || (echo "npm install (prod) failed, retrying ($i)" && sleep $((i*2))); done; \
+  fi
 
 EXPOSE 4000
 
