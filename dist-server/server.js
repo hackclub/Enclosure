@@ -6,6 +6,7 @@ import fs from "node:fs";
 import { desc, eq } from "drizzle-orm";
 import { db } from "./db.js";
 import { projects, createdProjects, shopItems, user as users, shopTransactions, orders } from "./schema.js";
+import { upsertAirtableUser, upsertAirtableOrder } from "./airtable.js";
 import { Pool } from "pg";
 // Move all env variable assignments here
 const IDENTITY_HOST = process.env.HC_IDENTITY_HOST || "https://auth.hackclub.com";
@@ -137,6 +138,21 @@ const corsOptions = process.env.NODE_ENV === 'production'
     : { origin: true, credentials: true };
 app.use(cors(corsOptions));
 app.use(express.json());
+// Helper to rewrite image paths to a CDN when configured.
+const CDN_BASE = process.env.CDN_BASE_URL || "";
+function toCdnUrl(img) {
+    if (!img)
+        return null;
+    const s = String(img).trim();
+    if (!s)
+        return null;
+    // leave absolute URLs alone
+    if (/^https?:\/\//i.test(s))
+        return s;
+    if (!CDN_BASE)
+        return s;
+    return `${CDN_BASE.replace(/\/$/, "")}/${s.replace(/^\//, "")}`;
+}
 // Middleware: if a request includes an identity token for a user who is banned,
 // block access to the site (returns 403). Allow unauthenticated requests.
 app.use(async (req, res, next) => {
@@ -297,6 +313,12 @@ app.patch("/api/projects/:id/status", async (req, res) => {
                                 const prev = Number(u.credits ?? 0) || 0;
                                 const next = prev + credits;
                                 await db.update(users).set({ credits: String(next) }).where(eq(users.id, u.id));
+                                try {
+                                    await upsertAirtableUser({ id: u.id, credits: String(next), updatedAt: new Date() });
+                                }
+                                catch (e) {
+                                    console.error('[payout] airtable upsert failed', String(e));
+                                }
                                 await db.insert(shopTransactions).values({ userId: u.id, amount: String(credits), reason: `Payout for project ${updated.id}`, createdAt: new Date() });
                                 console.log('Credited user', email, credits, 'hours=', rec.hours);
                             }
@@ -476,10 +498,23 @@ app.get("/api/auth/callback", async (req, res) => {
             if (existing.length) {
                 await db.update(users).set(basePayload).where(eq(users.id, idValue));
                 console.log("[auth] user updated", { id: idValue });
+                // Persist to Airtable (best-effort)
+                try {
+                    await upsertAirtableUser({ id: idValue, name: basePayload.name, email: basePayload.email, image: basePayload.image, slackId: basePayload.slackId, role: basePayload.role, banned: basePayload.banned });
+                }
+                catch (e) {
+                    console.error('[auth] airtable upsert failed', String(e));
+                }
             }
             else {
                 await db.insert(users).values({ ...basePayload, id: idValue, createdAt: new Date() });
                 console.log("[auth] user inserted", { id: idValue });
+                try {
+                    await upsertAirtableUser({ id: idValue, name: basePayload.name, email: basePayload.email, image: basePayload.image, slackId: basePayload.slackId, role: basePayload.role, banned: basePayload.banned });
+                }
+                catch (e) {
+                    console.error('[auth] airtable upsert failed', String(e));
+                }
             }
         }
         // Hackatime integration removed: skip linking Hackatime accounts.
@@ -623,6 +658,76 @@ app.use("/assets", express.static(assetsPath));
 // Fallback: also serve files from the dist root under /assets
 app.use("/assets", express.static(clientPath));
 app.use(express.static(clientPath));
+// Webhook endpoint for Airtable -> Postgres sync
+app.post('/api/webhook/airtable', async (req, res) => {
+    try {
+        const secret = process.env.AIRTABLE_WEBHOOK_SECRET;
+        if (secret) {
+            const header = String(req.headers['x-airtable-secret'] || '');
+            if (!header || header !== secret)
+                return res.status(401).json({ error: 'invalid webhook secret' });
+        }
+        const body = req.body || {};
+        const table = body.table || body.tableName || (body.record && body.record.table) || null;
+        const record = body.record || body.fields || null;
+        if (!table || !record)
+            return res.status(400).json({ error: 'missing table or record' });
+        if (String(table).toLowerCase().includes('user')) {
+            const f = record.fields || record;
+            const identityId = f.identityId || f.IdentityId || f.id || f.ID || null;
+            if (!identityId)
+                return res.status(400).json({ error: 'missing identityId in user record' });
+            const existing = await db.select().from(users).where(eq(users.id, String(identityId))).limit(1);
+            const payload = {
+                id: String(identityId),
+                name: f.Name ?? f.name ?? null,
+                email: f.Email ?? f.email ?? null,
+                image: f.Image ?? f.image ?? null,
+                slackId: f.SlackId ?? f.slackId ?? null,
+                role: (f.role ?? f.Role) || null,
+                banned: !!(f.Banned ?? f.banned),
+                credits: f.credits ?? null,
+                verificationStatus: f.verificationStatus ?? f.VerificationStatus ?? null,
+            };
+            if (existing.length) {
+                await db.update(users).set({ name: payload.name, email: payload.email, image: payload.image, slackId: payload.slackId, role: payload.role, banned: payload.banned, credits: payload.credits, verificationStatus: payload.verificationStatus, updatedAt: new Date() }).where(eq(users.id, payload.id));
+            }
+            else {
+                await db.insert(users).values({ ...payload, createdAt: new Date(), updatedAt: new Date() });
+            }
+            return res.json({ ok: true });
+        }
+        // For orders: best-effort insert/update using OrderId or record id
+        if (String(table).toLowerCase().includes('order')) {
+            const f = record.fields || record;
+            const orderId = f.OrderId || f.orderId || null;
+            const userId = f.UserId || f.userId || null;
+            const shopItemId = f.ShopItemId || f.shopItemId || null;
+            const amount = f.Amount ?? null;
+            const status = f.Status ?? null;
+            const slackId = f.SlackId ?? f.slack_id ?? null;
+            if (orderId && Number.isInteger(Number(orderId))) {
+                const idNum = Number(orderId);
+                const exists = await db.select().from(orders).where(eq(orders.id, idNum)).limit(1);
+                if (exists.length) {
+                    await db.update(orders).set({ userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, updatedAt: new Date() }).where(eq(orders.id, idNum));
+                }
+                else {
+                    await db.insert(orders).values({ id: idNum, userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date(), updatedAt: new Date() });
+                }
+                return res.json({ ok: true });
+            }
+            // fallback: insert new order row without forcing id
+            await db.insert(orders).values({ userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date(), updatedAt: new Date() });
+            return res.json({ ok: true });
+        }
+        return res.status(400).json({ error: 'unsupported table' });
+    }
+    catch (err) {
+        console.error('[webhook] airtable sync failed', String(err));
+        res.status(500).json({ error: 'sync failed', detail: String(err) });
+    }
+});
 // SPA fallback for client-side routing (exclude api and auth)
 // Dev-only API endpoint to set test cookies (inspect Set-Cookie headers)
 if (process.env.NODE_ENV !== "production") {
@@ -696,7 +801,9 @@ app.get("/api/shop-items", async (req, res) => {
         if (!u || u.role !== 'admin')
             return res.status(403).json({ error: 'shop is closed' });
         const items = await db.select().from(shopItems).orderBy(desc(shopItems.id));
-        res.json(items);
+        // Rewrite image URLs to CDN when configured
+        const out = items.map((it) => ({ ...it, img: toCdnUrl(it.img) }));
+        res.json(out);
     }
     catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -726,16 +833,27 @@ app.post("/api/shop/buy", async (req, res) => {
         if (current < price)
             return res.status(400).json({ error: "insufficient credits", credits: current, price });
         const next = current - price;
-        // create an order (pending) and deduct credits atomically-ish
-        // insert an orders row and a shop transaction, then update user credits
+        // create an order (pending) and persist to Airtable (best-effort)
         try {
-            await db.insert(orders).values({ userId: user.id, shopItemId: String(item.id), slackId: user.slackId ?? null, amount: String(price), status: 'pending', createdAt: new Date() });
+            const [createdOrder] = await db.insert(orders).values({ userId: user.id, shopItemId: String(item.id), slackId: user.slackId ?? null, amount: String(price), status: 'pending', createdAt: new Date() }).returning();
+            try {
+                await upsertAirtableOrder({ id: createdOrder.id ?? createdOrder.ID ?? createdOrder.orderId ?? item.id, userId: user.id, shopItemId: String(item.id), amount: price, status: 'pending', slackId: user.slackId ?? null, createdAt: createdOrder.createdAt ?? new Date() });
+            }
+            catch (e) {
+                console.error('[orders] airtable upsert failed', String(e));
+            }
         }
         catch (e) {
             console.error('failed to insert order', String(e));
         }
         await db.insert(shopTransactions).values({ userId: user.id, amount: String(-price), reason: `Purchase: ${item.title}`, createdAt: new Date() });
         await db.update(users).set({ credits: String(next) }).where(eq(users.id, user.id));
+        try {
+            await upsertAirtableUser({ id: user.id, credits: String(next), updatedAt: new Date() });
+        }
+        catch (e) {
+            console.error('[purchase] airtable upsert failed', String(e));
+        }
         res.json({ ok: true, credits: next, itemId: itemId });
     }
     catch (err) {
@@ -760,7 +878,9 @@ app.get('/api/orders', async (req, res) => {
       ORDER BY o.id DESC
     `;
         const result = await pgPool.query(sql, [user.id]);
-        res.json(result.rows);
+        // Rewrite returned item images to CDN if configured
+        const rows = (result.rows || []).map((r) => ({ ...r, itemImg: toCdnUrl(r.itemimg ?? r.itemImg) }));
+        res.json(rows);
     }
     catch (e) {
         const message = e instanceof Error ? e.message : String(e);
