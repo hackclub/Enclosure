@@ -801,8 +801,9 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 const PORT = Number(process.env.PORT) || 4000;
-app.listen(PORT, () => {
-  console.log(`API running at http://localhost:${PORT}`);
+const HOST = "0.0.0.0"
+app.listen(PORT,HOST, () => {
+  console.log(`API running on ${HOST}:${PORT}`);
 });
 
 // Add this after all app.use and before any catch-all or app.listen
