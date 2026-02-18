@@ -604,7 +604,13 @@ export default function App() {
         const data = (await res.json()) as { slackId?: string; name?: string | null; credits?: number };
         if (data?.name) setDisplayName(data.name);
         if (data?.slackId) setSlackId(data.slackId);
-        if (data?.slackId) setSlackAvatarUrl(`${CACHET_BASE}/users/${data.slackId}/r`);
+        // Prefer the avatar URL returned by the backend (e.g. Slack image),
+        // otherwise fall back to the Cachet CDN by Slack ID.
+        if (data?.image) {
+          setSlackAvatarUrl(data.image);
+        } else if (data?.slackId) {
+          setSlackAvatarUrl(`${CACHET_BASE}/users/${data.slackId}/r`);
+        }
         if (typeof data?.credits === "number") setCredits(data.credits);
       } catch (_err) {}
     })();

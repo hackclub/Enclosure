@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+console.log('server.ts loaded at', new Date().toISOString());
 import cors from "cors";
 import path from "node:path";
 import fs from "node:fs";
@@ -601,6 +602,12 @@ app.get("/api/auth/me", async (req, res) => {
     res.json(meJson);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    console.error('[api/auth/profile] error', err);
+    try {
+      const fs = await import('node:fs');
+      const out = typeof err === 'string' ? err : (err instanceof Error ? (err.stack || err.message) : String(err));
+      fs.appendFileSync('profile_error.log', `\n---- ${new Date().toISOString()} ----\n${out}\n`);
+    } catch (e) {}
     res.status(500).json({ error: "profile lookup failed", detail: message });
   }
 });
@@ -608,12 +615,25 @@ app.get("/api/auth/me", async (req, res) => {
 // Convenience: return the most recently seen user (for UI avatar without exposing tokens)
 app.get("/api/auth/profile", async (req, res) => {
   try {
+    console.log('[profile] handler start');
     const token = extractToken(req);
+    console.log('[profile] extracted token:', token?.slice ? token.slice(0,12) + '...' : token);
 
     let userRow;
     if (token) {
-      const found = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
-      if (found.length) userRow = found[0];
+      console.log('[profile] about to run raw query');
+      try {
+        const { Pool } = await import('pg');
+        const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+        const sql = 'select "id", "name", "email", "email_verified", "image", "slack_id", "banned", "credits", "role", "verification_status", "identity_token", "refresh_token", "created_at", "updated_at" from "user" where "user"."identity_token" = $1 limit $2';
+        const q = await pool.query(sql, [token, 1]);
+        console.log('[profile] raw query returned rows:', q.rows.length);
+        await pool.end();
+        if (q.rows && q.rows.length) userRow = q.rows[0];
+      } catch (e) {
+        console.error('[api/auth/profile] raw query error', e);
+        throw e;
+      }
     }
 
     // Do not auto-fallback to the most-recent user. Treat as unauthenticated when no token.
