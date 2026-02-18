@@ -5,4 +5,5 @@ dist/
 assets/covers/*.exe
 assets/covers/*.xlsx.env
 /node_modules
+db_conn.log
 ngrok.exe
