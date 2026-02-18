@@ -25,8 +25,13 @@ function toCdnUrl(path: string | null | undefined) {
   return `${CDN_BASE.replace(/\/$/, "")}/${s.replace(/^\//, "")}`;
 }
 // Placeholder CDN links (configurable via Vite env)
-const PLACEHOLDER_LOGO = import.meta.env.VITE_PLACEHOLDER_LOGO || "https://placehold.co/750x200?text=Enclosure+Logo";
+const PLACEHOLDER_LOGO = import.meta.env.VITE_PLACEHOLDER_LOGO || "https://cdn.hackclub.com/019c6c84-9cce-7375-ba4a-808317e0986a/logo.png";
 const PLACEHOLDER_COVER = import.meta.env.VITE_PLACEHOLDER_COVER || "https://placehold.co/180x120?text=Cover";
+const PLACEHOLDER_COVER_1 = import.meta.env.VITE_PLACEHOLDER_COVER_1 || "https://placehold.co/180x120?text=Cover+1";
+const PLACEHOLDER_COVER_2 = import.meta.env.VITE_PLACEHOLDER_COVER_2 || "https://placehold.co/180x120?text=Cover+2";
+const PLACEHOLDER_COVER_3 = import.meta.env.VITE_PLACEHOLDER_COVER_3 || "https://placehold.co/180x120?text=Cover+3";
+const PLACEHOLDER_COVER_4 = import.meta.env.VITE_PLACEHOLDER_COVER_4 || "https://placehold.co/180x120?text=Cover+4";
+const PLACEHOLDER_CASSOS = import.meta.env.VITE_PLACEHOLDER_CASSOS || "https://cdn.hackclub.com/019c6f69-6b4c-7c4a-91fb-287dfc078625/Cassos.png";
 
 const faqItems = [
   {
@@ -72,6 +77,15 @@ const faqItems = [
       <p>
         STP or STEP files are preferred. If you are unsure, export STP and you
         will be fine.
+      </p>
+    ),
+  },
+  {
+    key: "double-dip",
+    question: "Is double dipping allowed?",
+    answer: (
+      <p>
+        You can double dip with other programs if you are not opting for shop rewards. But if you are opting for shop rewards, you are NOT ALLOWED to double dip with other programs.
       </p>
     ),
   },
@@ -184,22 +198,22 @@ function Hero() {
           <div className="covers-wrap">
             <img
               className="cover-img cover-1"
-              src={PLACEHOLDER_COVER}
+              src={PLACEHOLDER_COVER_1}
               alt="Enclosure cover example 1"
             />
             <img
               className="cover-img cover-2"
-              src={PLACEHOLDER_COVER}
+              src={PLACEHOLDER_COVER_2}
               alt="Enclosure cover example 2"
             />
             <img
               className="cover-img cover-3"
-              src={PLACEHOLDER_COVER}
+              src={PLACEHOLDER_COVER_3}
               alt="Enclosure cover example 3"
             />
             <img
               className="cover-img cover-4"
-              src={PLACEHOLDER_COVER}
+              src={PLACEHOLDER_COVER_4}
               alt="Enclosure cover example 4"
             />
           </div>
@@ -216,14 +230,19 @@ function Hero() {
 
         <div className="buttons-wrap">
           <div className="buttons">
-            <div className="buttons-row top">
+            <div className="buttons-row top" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <a href="https://forms.hackclub.com/enclosure" target="_blank">
-              <button
-                className="btn"
-                type="button"
-              >
-                Submit your project →
-              </button>
+                <button
+                  className="btn"
+                  type="button"
+                >
+                  Submit your project →
+                </button>
+              </a>
+              <a href="/weekly-challenges">
+                <button className="btn secondary" type="button">
+                  Weekly Challenges 🏆
+                </button>
               </a>
             </div>
             <div className="buttons-row bottom">
@@ -655,7 +674,7 @@ export default function App() {
               >
                 <div style={{ fontWeight: 800, color: "#b45309", fontSize: 16, minWidth: 28, textAlign: "center" }}>{credits}</div>
                 <img
-                  src={PLACEHOLDER_COVER}
+                  src={PLACEHOLDER_CASSOS}
                   alt={typeof credits === 'number' ? `${credits} cassos` : 'cassos'}
                   style={{ width: 36, height: 42, display: 'block' }}
                 />
@@ -713,7 +732,7 @@ export default function App() {
             width: 220,
             zIndex: 999,
           }}
-          src={PLACEHOLDER_LOGO}
+          src="https://assets.hackclub.com/flag-orpheus-top.svg"
           alt="Hack Club"
         />
       </a>
