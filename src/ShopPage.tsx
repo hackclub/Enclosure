@@ -202,7 +202,7 @@ export default function ShopPage() {
                   fontSize: 18,
                 }}>
                   <div style={{ lineHeight: 1 }}>{credits}</div>
-                  <img src="/assets/Cassos.png" alt="cassos" style={{ width: 34, height: 40, display: 'block' }} />
+                  <img src="https://cdn.hackclub.com/019c6f69-6b4c-7c4a-91fb-287dfc078625/Cassos.png" alt="cassos" style={{ width: 34, height: 40, display: 'block' }} />
                 </div>
               ) : null}
               <button
@@ -262,7 +262,7 @@ export default function ShopPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <div style={{ fontWeight: 700 }}>{item.price ? Number(item.price) : 0}</div>
-                        <img src="/assets/Cassos.png" alt={item.price ? `${item.price} cassos` : 'cassos'} style={{ width: 30, height: 36, display: 'block' }} />
+                        <img src="https://cdn.hackclub.com/019c6f69-6b4c-7c4a-91fb-287dfc078625/Cassos.png" alt={item.price ? `${item.price} cassos` : 'cassos'} style={{ width: 30, height: 36, display: 'block' }} />
                       </div>
                       <div>
                         <button className="btn" onClick={() => buyItem(item.id)}>Buy</button>
