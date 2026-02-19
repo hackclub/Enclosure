@@ -301,57 +301,59 @@ export default function ShopPage() {
           </button>
 
           {showForm ? (
-            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", zIndex: 2000 }}>
-              <div style={{ background: "var(--card)", padding: 20, borderRadius: 10, width: "min(92%, 560px)" }}>
-                <h2>Add Shop Item</h2>
-                <div className="section-note">Admins only.</div>
-                <form onSubmit={handleSubmit} style={{ maxWidth: 520 }}>
-                  <div className="form-row">
-                    <label>
-                      Title
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "grid", placeItems: "center", zIndex: 2000 }}>
+              <div style={{ background: "var(--card)", padding: 18, borderRadius: 12, width: "min(94%, 680px)", boxShadow: '0 12px 36px rgba(0,0,0,0.25)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <h2 style={{ margin: 0 }}>Add Shop Item</h2>
+                  <div className="section-note" style={{ fontSize: 12 }}>Admins only</div>
+                </div>
+                <form onSubmit={handleSubmit} style={{ maxWidth: 640, display: 'grid', gap: 12 }}>
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    <label style={{ fontWeight: 700 }}>Title
                       <input
                         type="text"
                         value={form.title}
                         onChange={(event) => setForm({ ...form, title: event.target.value })}
                         required
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}
                       />
                     </label>
-                  </div>
-                  <div className="form-row">
-                    <label>
-                      Note
+                    <label style={{ fontWeight: 700 }}>Note
                       <input
                         type="text"
                         value={form.note}
                         onChange={(event) => setForm({ ...form, note: event.target.value })}
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}
                       />
                     </label>
-                  </div>
-                  <div className="form-row">
-                    <label>
-                      Image URL
-                      <input
-                        type="url"
-                        value={form.img}
-                        onChange={(event) => setForm({ ...form, img: event.target.value })}
-                      />
-                    </label>
-                  </div>
-                  <div className="form-row">
-                    <label>
-                      Link URL
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <label style={{ flex: 1, fontWeight: 700 }}>
+                        Image URL
+                        <input
+                          type="url"
+                          value={form.img}
+                          onChange={(event) => setForm({ ...form, img: event.target.value })}
+                          style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}
+                        />
+                      </label>
+                      <div style={{ width: 120, height: 90, borderRadius: 8, border: '1px dashed var(--border)', display: 'grid', placeItems: 'center', background: '#fff' }}>
+                        {form.img ? <img src={form.img} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} /> : <div style={{ color: 'var(--muted)', fontSize: 12 }}>Preview</div>}
+                      </div>
+                    </div>
+                    <label style={{ fontWeight: 700 }}>Link URL
                       <input
                         type="url"
                         value={form.href}
                         onChange={(event) => setForm({ ...form, href: event.target.value })}
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)' }}
                       />
                     </label>
                   </div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                    <button className="btn" type="submit">Add Item</button>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                     <button className="btn secondary" type="button" onClick={() => setShowForm(false)}>Cancel</button>
+                    <button className="btn" type="submit">Add Item</button>
                   </div>
-                  {status ? <div style={{ marginTop: 12 }}>{status}</div> : null}
+                  {status ? <div style={{ marginTop: 6, color: 'var(--muted)' }}>{status}</div> : null}
                 </form>
               </div>
             </div>
