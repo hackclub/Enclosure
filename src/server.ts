@@ -667,7 +667,9 @@ app.get("/api/auth/profile", async (req, res) => {
 
 // Use process.cwd() to reliably reference the built `dist` directory
 // regardless of how the server is executed (works on Heroku).
+// On Vercel, static files are served by the CDN — skip filesystem serving.
 const clientPath = path.join(process.cwd(), "dist");
+if (!process.env.VERCEL) {
 const assetsPath = path.join(process.cwd(), "dist", "assets");
 console.log("Serving client from:", clientPath, "assets from:", assetsPath);
 // Custom assets middleware: try explicit disk locations before falling
@@ -694,6 +696,7 @@ app.use("/assets", express.static(assetsPath));
 // Fallback: also serve files from the dist root under /assets
 app.use("/assets", express.static(clientPath));
 app.use(express.static(clientPath));
+}
 // Webhook endpoint for Airtable -> Postgres sync
 app.post('/api/webhook/airtable', async (req, res) => {
   try {
@@ -790,12 +793,14 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
+if (!process.env.VERCEL) {
 app.get(/^(?!\/api\/).*/, (req, res) => {
   // Prevent aggressive caching of the SPA shell so clients always load
   // the latest `index.html` after a deploy.
   res.setHeader("Cache-Control", "no-store, must-revalidate");
   res.sendFile(path.join(clientPath, "index.html"));
 });
+}
 
 // Development-only: quickly set test cookies so we can inspect Set-Cookie flags
 if (process.env.NODE_ENV !== "production") {
@@ -820,11 +825,17 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-const PORT = Number(process.env.PORT) || 4000;
-const HOST = "0.0.0.0"
-app.listen(PORT,HOST, () => {
-  console.log(`API running on ${HOST}:${PORT}`);
-});
+// Export app for Vercel serverless usage
+export default app;
+
+// Only start the server when not running on Vercel
+if (!process.env.VERCEL) {
+  const PORT = Number(process.env.PORT) || 4000;
+  const HOST = "0.0.0.0";
+  app.listen(PORT, HOST, () => {
+    console.log(`API running on ${HOST}:${PORT}`);
+  });
+}
 
 // Add this after all app.use and before any catch-all or app.listen
 app.get("/api/shop-items", async (req, res) => {

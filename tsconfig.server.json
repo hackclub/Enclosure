@@ -10,5 +10,5 @@
     "noImplicitAny": false,
     "resolveJsonModule": true
   },
-  "include": ["src/server.ts", "src/db.ts", "src/schema.ts", "src/auth/**/*.ts"]
+  "include": ["src/server.ts", "src/db.ts", "src/schema.ts", "src/airtable.ts", "src/auth/**/*.ts"]
 }
