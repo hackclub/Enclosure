@@ -127,7 +127,7 @@ export default function OrdersPage() {
                         <div style={{ color: 'var(--muted)' }}>Ship to: <strong>{o.slack_id ?? '—'}</strong></div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ fontWeight: 800 }}>{o.amount}</div>
-                          <img src="/assets/Cassos.png" alt="cassos" style={{ width: 26, height: 30 }} />
+                          <img src="https://cdn.hackclub.com/019c6f69-6b4c-7c4a-91fb-287dfc078625/Cassos.png" alt="cassos" style={{ width: 26, height: 30 }} />
                         </div>
                       </div>
                     </div>
