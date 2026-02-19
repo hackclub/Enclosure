@@ -341,29 +341,38 @@ app.patch("/api/projects/:id/status", async (req, res) => {
 });
 
 app.get("/api/auth/login", (req, res) => {
-  if (!IDENTITY_CLIENT_ID) return res.status(500).send("Missing HC_IDENTITY_CLIENT_ID");
-  // Accept `continue` or `cont` to return the user after login, and `force=1` to add prompt=login
-  const continueUrl = String((req.query && (req.query.continue || req.query.cont)) || "");
-  const force = String((req.query && req.query.force) || "");
-
-  const url = new URL("/oauth/authorize", IDENTITY_HOST);
-  url.searchParams.set("client_id", IDENTITY_CLIENT_ID);
-  url.searchParams.set("redirect_uri", IDENTITY_REDIRECT_URI);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", "profile email name slack_id verification_status");
-
-  if (continueUrl) {
-    try {
-      const payload = Buffer.from(JSON.stringify({ cont: continueUrl }), "utf8").toString("base64url");
-      url.searchParams.set("state", payload);
-    } catch (e) {
-      // ignore invalid continue
+  try {
+    if (!IDENTITY_CLIENT_ID) {
+      console.error('[auth/login] HC_IDENTITY_CLIENT_ID is not set');
+      return res.status(500).json({ error: "Missing HC_IDENTITY_CLIENT_ID" });
     }
+    // Accept `continue` or `cont` to return the user after login, and `force=1` to add prompt=login
+    const continueUrl = String((req.query && (req.query.continue || req.query.cont)) || "");
+    const force = String((req.query && req.query.force) || "");
+
+    const url = new URL("/oauth/authorize", IDENTITY_HOST);
+    url.searchParams.set("client_id", IDENTITY_CLIENT_ID);
+    url.searchParams.set("redirect_uri", IDENTITY_REDIRECT_URI);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "profile email name slack_id verification_status");
+
+    if (continueUrl) {
+      try {
+        const payload = Buffer.from(JSON.stringify({ cont: continueUrl }), "utf8").toString("base64url");
+        url.searchParams.set("state", payload);
+      } catch (e) {
+        console.error('[auth/login] failed to encode continue URL', String(e));
+      }
+    }
+
+    if (force === "1") url.searchParams.set("prompt", "login");
+
+    console.log('[auth/login] redirecting to', url.toString());
+    res.redirect(url.toString());
+  } catch (err) {
+    console.error('[auth/login] unexpected error', err instanceof Error ? err.stack : String(err));
+    res.status(500).json({ error: "login failed", detail: String(err) });
   }
-
-  if (force === "1") url.searchParams.set("prompt", "login");
-
-  res.redirect(url.toString());
 });
 
 // Stateless logout: clear known cookies (best-effort) and bounce to the frontend root
@@ -579,6 +588,7 @@ app.get("/api/auth/callback", async (req, res) => {
 
     return res.redirect(302, redirectUrl.toString());
   } catch (err) {
+    console.error('[auth/callback] unexpected error', err instanceof Error ? err.stack : String(err));
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: "auth callback failed", detail: message });
   }
@@ -660,6 +670,7 @@ app.get("/api/auth/profile", async (req, res) => {
       credits: Number(userRow.credits ?? 0),
     });
   } catch (err) {
+    console.error('[auth/profile] unexpected error', err instanceof Error ? err.stack : String(err));
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: "profile lookup failed", detail: message });
   }
@@ -945,6 +956,13 @@ app.get(/^(?!\/api\/).*/, (req, res) => {
   res.sendFile(path.join(clientPath, "index.html"));
 });
 }
+
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('[error]', err instanceof Error ? err.stack : String(err));
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'Internal server error', detail: String(err) });
+  }
+});
 
 // this is for vercel
 export default app;
