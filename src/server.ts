@@ -195,7 +195,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 // Debug: show cookies and auth extraction for troubleshooting
-app.get("/__debug_cookies", (req, res) => {
+app.get("/api/__debug_cookies", (req, res) => {
   try {
     const raw = req.headers.cookie || "";
     const token = extractToken(req);
@@ -206,7 +206,7 @@ app.get("/__debug_cookies", (req, res) => {
 });
 
 // Debug endpoint: list files under the built `dist` directory (temporary)
-app.get("/__debug_dist", async (_req, res) => {
+app.get("/api/__debug_dist", async (_req, res) => {
   try {
     const fs = await import("node:fs/promises");
     const distDir = path.join(process.cwd(), "dist");
@@ -217,7 +217,7 @@ app.get("/__debug_dist", async (_req, res) => {
   }
 });
 
-app.get("/__debug_assets", async (_req, res) => {
+app.get("/api/__debug_assets", async (_req, res) => {
   try {
     const fs = await import("node:fs/promises");
     const assetsDir = path.join(process.cwd(), "dist", "assets");
@@ -767,80 +767,8 @@ app.post('/api/webhook/airtable', async (req, res) => {
   }
 });
 
-// SPA fallback for client-side routing (exclude api and auth)
-// Dev-only API endpoint to set test cookies (inspect Set-Cookie headers)
-if (process.env.NODE_ENV !== "production") {
-  app.get("/api/__dev_set_cookies", (_req, res) => {
-    try {
-      const secure = process.env.NODE_ENV === "production";
-      const sameSiteVal: "lax" | "none" = secure ? "none" : "lax";
-      const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
-      const cookieOpts: Record<string, unknown> = {
-        httpOnly: true,
-        sameSite: sameSiteVal,
-        secure,
-        path: "/",
-      };
-      if (cookieDomain) (cookieOpts as any).domain = cookieDomain;
-      res.cookie("hc_identity", "dev-token-123", cookieOpts);
-      const sessionOpts = { ...cookieOpts } as Record<string, unknown>;
-      delete (sessionOpts as any).maxAge;
-      res.cookie("session", "1", sessionOpts);
-      res.json({ ok: true });
-    } catch (err) {
-      res.status(500).json({ error: String(err) });
-    }
-  });
-}
-
-if (!process.env.VERCEL) {
-app.get(/^(?!\/api\/).*/, (req, res) => {
-  // Prevent aggressive caching of the SPA shell so clients always load
-  // the latest `index.html` after a deploy.
-  res.setHeader("Cache-Control", "no-store, must-revalidate");
-  res.sendFile(path.join(clientPath, "index.html"));
-});
-}
-
-// Development-only: quickly set test cookies so we can inspect Set-Cookie flags
-if (process.env.NODE_ENV !== "production") {
-  app.get("/__dev_set_cookies", (_req, res) => {
-    try {
-      const secure = process.env.NODE_ENV === "production";
-      const sameSiteVal: "lax" | "none" = secure ? "none" : "lax";
-      const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
-      const cookieOpts: Record<string, unknown> = {
-        httpOnly: true,
-        sameSite: sameSiteVal,
-        secure,
-        path: "/",
-      };
-      if (cookieDomain) (cookieOpts as any).domain = cookieDomain;
-      res.cookie("hc_identity", "dev-token-123", cookieOpts);
-      res.cookie("session", "1", cookieOpts);
-      res.json({ ok: true });
-    } catch (err) {
-      res.status(500).json({ error: String(err) });
-    }
-  });
-}
-
-// Export app for Vercel serverless usage
-export default app;
-
-// Only start the server when not running on Vercel
-if (!process.env.VERCEL) {
-  const PORT = Number(process.env.PORT) || 4000;
-  const HOST = "0.0.0.0";
-  app.listen(PORT, HOST, () => {
-    console.log(`API running on ${HOST}:${PORT}`);
-  });
-}
-
-// Add this after all app.use and before any catch-all or app.listen
 app.get("/api/shop-items", async (req, res) => {
   try {
-    // The shop is restricted to admin users only.
     const token = extractToken(req);
     if (!token) return res.status(401).json({ error: 'shop is closed' });
     const found = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
@@ -848,7 +776,6 @@ app.get("/api/shop-items", async (req, res) => {
     if (!u || u.role !== 'admin') return res.status(403).json({ error: 'shop is closed' });
 
     const items = await db.select().from(shopItems).orderBy(desc(shopItems.id));
-    // Rewrite image URLs to CDN when configured
     const out = items.map((it: any) => ({ ...it, img: toCdnUrl(it.img) }));
     res.json(out);
   } catch (err) {
@@ -857,13 +784,11 @@ app.get("/api/shop-items", async (req, res) => {
   }
 });
 
-// Purchase an item: deduct credits and record a transaction.
 app.post("/api/shop/buy", async (req, res) => {
   try {
     const user = await getUserfromReq(req);
     if (!user) return res.status(401).json({ error: "not authenticated" });
 
-    // Prevent non-admin users from purchasing when shop is closed.
     if (user.role !== 'admin') {
       return res.status(403).json({ error: 'shop is closed' });
     }
@@ -882,7 +807,6 @@ app.post("/api/shop/buy", async (req, res) => {
 
     const next = current - price;
 
-    // create an order (pending) and persist to Airtable (best-effort)
     try {
       const [createdOrder] = await db.insert(orders).values({ userId: user.id, shopItemId: String(item.id), slackId: user.slackId ?? null, amount: String(price), status: 'pending', createdAt: new Date() }).returning();
       try {
@@ -903,14 +827,11 @@ app.post("/api/shop/buy", async (req, res) => {
   }
 });
 
-// Return orders for the authenticated user
 app.get('/api/orders', async (req, res) => {
   try {
     const user = await getUserfromReq(req);
     if (!user) return res.status(401).json({ error: 'not authenticated' });
 
-    // Join orders with shop_items to include item title and image so frontend
-    // does not need to perform extra lookups and avoids undefined names.
     const sql = `
       SELECT o.id, o.user_id, o.shop_item_id, o.amount, o.status, o.slack_id, o.created_at,
              s.title AS "itemTitle", s.img AS "itemImg"
@@ -920,7 +841,6 @@ app.get('/api/orders', async (req, res) => {
       ORDER BY o.id DESC
     `;
     const result = await pgPool.query(sql, [user.id]);
-    // Rewrite returned item images to CDN if configured
     const rows = (result.rows || []).map((r: any) => ({ ...r, itemImg: toCdnUrl(r.itemimg ?? r.itemImg) }));
     res.json(rows);
   } catch (e) {
@@ -929,16 +849,11 @@ app.get('/api/orders', async (req, res) => {
   }
 });
 
-// Admin-only: create a shop item. Authorize with Bearer identity token.
 app.post("/api/shop-items", async (req, res) => {
   try {
     const auth = req.headers.authorization || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
 
-    // In production require a valid admin token. In development allow
-    // unauthenticated creation for convenience when the server is running
-    // locally (e.g. using ?dev_admin=1 to show the UI). This is intentionally
-    // permissive only for non-production environments.
     let adminUser = null;
     if (token) {
       const rows = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
@@ -949,7 +864,6 @@ app.post("/api/shop-items", async (req, res) => {
       if (process.env.NODE_ENV === 'production') {
         return res.status(401).send("Missing Authorization Bearer token");
       }
-      // dev-mode: allow through without user
       adminUser = null;
     }
 
@@ -971,7 +885,6 @@ app.post("/api/shop-items", async (req, res) => {
   }
 });
 
-// Admin-only: delete a shop item by id
 app.delete("/api/shop-items/:id", async (req, res) => {
   try {
     const auth = req.headers.authorization || "";
@@ -999,3 +912,48 @@ app.delete("/api/shop-items/:id", async (req, res) => {
     res.status(500).send(`Failed to delete shop item: ${message}`);
   }
 });
+
+// dev cookie
+if (process.env.NODE_ENV !== "production") {
+  app.get("/api/__dev_set_cookies", (_req, res) => {
+    try {
+      const secure = process.env.NODE_ENV === "production";
+      const sameSiteVal: "lax" | "none" = secure ? "none" : "lax";
+      const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
+      const cookieOpts: Record<string, unknown> = {
+        httpOnly: true,
+        sameSite: sameSiteVal,
+        secure,
+        path: "/",
+      };
+      if (cookieDomain) (cookieOpts as any).domain = cookieDomain;
+      res.cookie("hc_identity", "dev-token-123", cookieOpts);
+      const sessionOpts = { ...cookieOpts } as Record<string, unknown>;
+      delete (sessionOpts as any).maxAge;
+      res.cookie("session", "1", sessionOpts);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+}
+
+// SPA fallback
+if (!process.env.VERCEL) {
+app.get(/^(?!\/api\/).*/, (req, res) => {
+  res.setHeader("Cache-Control", "no-store, must-revalidate");
+  res.sendFile(path.join(clientPath, "index.html"));
+});
+}
+
+// this is for vercel
+export default app;
+
+// Only start the server when not running on Vercel
+if (!process.env.VERCEL) {
+  const PORT = Number(process.env.PORT) || 4000;
+  const HOST = "0.0.0.0";
+  app.listen(PORT, HOST, () => {
+    console.log(`API running on ${HOST}:${PORT}`);
+  });
+}
