@@ -482,7 +482,7 @@ function Shop() {
                 {rowItems.map((item, i) => (
                   <div key={`${item.label}-${i}`} className="shop-card">
                     <div className="shop-img" aria-hidden>
-                      <img src={item.img} alt="" />
+                      <img src={item.label.toLowerCase().includes("cassos") ? PLACEHOLDER_CASSOS : item.img} alt="" />
                     </div>
                     <h5>{item.label}</h5>
                     <div className="note">{item.note}</div>
