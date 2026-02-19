@@ -1,0 +1,67 @@
+# <img width="38px" height="38px" style="vertical-align:middle" src="https://cdn.hackclub.com/019c7108-24d1-79aa-b153-bbd42d5e221a/favicon.png"> Enclosure — Hack Club YSWS
+
+**Enclosure** is an official **Hack Club YSWS (You Ship, We Ship)** program where participants design enclosure cases (CAD models) for real-world objects — and we physically **3D print and ship the case to them**.
+
+Instead of just sharing designs online…  
+you actually receive your creation in real life <br>
+~ Adhyys
+
+---
+
+## 🎯 What You Do
+
+1. Design an enclosure/case in any CAD software (Fusion 360, Blender, Onshape, FreeCAD, etc.)
+2. Submit your CAD files/links
+3. Attach your hackatime and lapse link in this <a href="https://forms.hackclub.com" target="_blank">form</a>
+5. We review and print it
+6. We ship the enclosure directly to you and also credit you cassos if opted for shop !
+
+**You design it → we manufacture it.**
+
+---
+
+## <img src="https://cdn.hackclub.com/019c6f69-6b4c-7c4a-91fb-287dfc078625/Cassos.png" width="40" style="vertical-align:middle" alt="Cassos"/> Earn Cassos (In-Platform Currency)
+
+Enclosure also includes a **shop system**.
+
+By:
+- Shipping enclosure CADs  
+- Tracking your build time with <a target="_blank" href="https://hackatime.hackclub.com">Hackatime</a> and <a href="https://lapse.hackclub.com" target="_blank">Lapse</a>
+
+You earn **Cassos**, which can be spent inside the platform.
+
+---
+
+## 🧑‍💻 For Developers
+
+We welcome contributors!
+
+You can help with:
+- Website features
+- Submission review tools
+- Shop system
+- Automation & integrations
+- CAD validation tools
+- Printing pipeline
+
+---
+
+## 🛠 Tech Stack
+
+- **Frontend:** Next.js  
+- **Backend:** Node.js API  
+- **Database:** PostgreSQL  
+- **Hosting:** Docker / Coolify  
+- **Storage:** Local + CDN assets  
+
+---
+
+## 🚀 Running Locally
+
+```bash
+git clone https://github.com/<your-repo>/enclosure
+cd enclosure
+cp .env.example .env
+npm install
+npm run dev (This will start the frontend and expose the API simultaneously)
+```
