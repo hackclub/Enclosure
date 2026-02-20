@@ -241,7 +241,7 @@ function Hero() {
               </a>
               <a href="/weekly-challenges">
                 <button className="btn secondary" type="button">
-                  Weekly Challenges 🏆
+                  Weekly Challenges 
                 </button>
               </a>
             </div>
@@ -252,12 +252,12 @@ function Hero() {
                 href="https://docs.google.com/presentation/d/e/2PACX-1vQpmTW_T9md56kegOqOYb9zAVv_upZSIxsNc59ueinncyolm_nHDyLXihWIRhBKb71LDOq6W_snMWBX/pub?start=false&loop=false&delayms=3000"
               >
                 <button className="btn secondary" type="button">
-                  Design Guide ✏️
+                  Design Guide 
                 </button>
               </a>
               <a target="_blank"href="https://hackclub.enterprise.slack.com/archives/C092D99G1RU">
                 <button className="btn secondary" type="button">
-                  Join Slack🛠️
+                  Join Slack
                 </button>
               </a>
               <a
@@ -266,7 +266,7 @@ function Hero() {
                 href="https://workshops.hackclub.com/"
               >
                 <button className="btn secondary" type="button">
-                  Run a workshop 🎤
+                  Run a workshop 
                 </button>
               </a>
             </div>
@@ -601,11 +601,11 @@ export default function App() {
           return;
         }
         if (!res.ok) return;
-        const data = (await res.json()) as { slackId?: string; name?: string | null; credits?: number };
+        const data = await res.json();
+        // Derive slackId from HCA auth profile directly
         if (data?.name) setDisplayName(data.name);
         if (data?.slackId) setSlackId(data.slackId);
-        // Prefer the avatar URL returned by the backend (e.g. Slack image),
-        // otherwise fall back to the Cachet CDN by Slack ID.
+        // Prefer avatar from backend, else Cachet CDN
         if (data?.image) {
           setSlackAvatarUrl(data.image);
         } else if (data?.slackId) {
@@ -720,7 +720,7 @@ export default function App() {
             }}
           >
             <div style={{ marginBottom: 8, color: '#ec3750', fontWeight: 700 }}>
-              Hackatime Slack ID:
+              Slack ID:
             </div>
             <div style={{ wordBreak: "break-all", fontFamily: 'monospace', fontSize: '1.1rem', marginBottom: 10 }}>
               {slackId ? slackId : "Slack ID not available."}

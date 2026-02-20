@@ -6,7 +6,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { desc, eq } from "drizzle-orm";
 import { db } from "./db.js";
-import { projects, createdProjects, shopItems, user as users, shopTransactions, orders } from "./schema.js";
+import { projects, createdProjects, shopItems, user as users, shopTransactions, orders, weeklyChallenges } from "./schema.js";
 import { upsertAirtableUser, upsertAirtableOrder } from "./airtable.js";
 import { Pool } from "pg";
 
@@ -633,13 +633,29 @@ app.get("/api/auth/profile", async (req, res) => {
     if (token) {
       console.log('[profile] about to run raw query');
       try {
-        const { Pool } = await import('pg');
         const pool = new Pool({ connectionString: process.env.DATABASE_URL });
         const sql = 'select "id", "name", "email", "email_verified", "image", "slack_id", "banned", "credits", "role", "verification_status", "identity_token", "refresh_token", "created_at", "updated_at" from "user" where "user"."identity_token" = $1 limit $2';
         const q = await pool.query(sql, [token, 1]);
         console.log('[profile] raw query returned rows:', q.rows.length);
-        await pool.end();
         if (q.rows && q.rows.length) userRow = q.rows[0];
+        // If slack_id is missing, try to fetch it from Slack API
+        if (userRow && !userRow.slack_id && userRow.email && process.env.SLACK_BOT_TOKEN) {
+          const slackRes = await fetch("https://slack.com/api/users.lookupByEmail", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}`,
+              "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({ email: userRow.email })
+          });
+          const slackData = await slackRes.json();
+          if (slackData.ok && slackData.user && slackData.user.id) {
+            userRow.slack_id = slackData.user.id;
+            // Update DB
+            await pool.query('update "user" set "slack_id" = $1 where "id" = $2', [slackData.user.id, userRow.id]);
+          }
+        }
+        await pool.end();
       } catch (e) {
         console.error('[api/auth/profile] raw query error', e);
         throw e;
@@ -658,15 +674,12 @@ app.get("/api/auth/profile", async (req, res) => {
       email: userRow.email,
       emailVerified: userRow.emailVerified,
       image: userRow.image,
-      slackId: userRow.slackId,
+      slackId: userRow.slack_id, // derive from DB field
       role: userRow.role,
       canManageShop,
-      // Indicates whether the shop is available to this user (admins only)
       shopOpen: canManageShop,
       identityToken: canManageShop ? userRow.identityToken : null,
       identityLinked: Boolean(userRow.id),
-      // Expose the user's current credits (number). Stored as text in DB,
-      // so coerce to Number and default to 0 if missing.
       credits: Number(userRow.credits ?? 0),
     });
   } catch (err) {
