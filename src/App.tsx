@@ -435,7 +435,7 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
 
         <div className="buttons-wrap">
           <div className="buttons">
-            <div className="buttons-row top" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div className="buttons-row top" style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 32 }}>
               <a href="https://forms.hackclub.com/enclosure" target="_blank">
                 <button
                   className="btn"
