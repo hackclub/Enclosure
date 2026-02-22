@@ -4,11 +4,11 @@
 
 Instead of just sharing designs online…  
 you actually receive your creation in real life <br>
-~ Adhyys
+~ Adhyys & Anvay
 
 ---
 
-## 🎯 What You Do
+## What You Do
 
 1. Design an enclosure/case in any CAD software (Fusion 360, Blender, Onshape, FreeCAD, etc.)
 2. Submit your CAD files/links
@@ -32,17 +32,16 @@ You earn **Cassos**, which can be spent inside the platform.
 
 ---
 
-## 🧑‍💻 For Developers
+## For Developers
 
-We welcome contributors!
+We would really appreciate contributors !
 
 You can help with:
-- Website features
-- Submission review tools
+- Website Design
 - Shop system
 - Automation & integrations
-- CAD validation tools
-- Printing pipeline
+- Security Issues
+- Bug Fixes
 
 ---
 
@@ -56,7 +55,7 @@ You can help with:
 
 ---
 
-## 🚀 Running Locally
+## Running Locally
 
 ```bash
 git clone https://github.com/<your-repo>/enclosure
