@@ -107,7 +107,7 @@ export default function OrdersPage() {
                       {item.img ? (
                         <img src={item.img} alt={item.title || 'item'} style={{ maxWidth: '100%', maxHeight: '100%', display: 'block' }} />
                       ) : (
-                        <div style={{ color: '#9ca3af' }}>{item.title ? item.title[0] : '—'}</div>
+                        <div style={{ color: '#9ca3af' }}>{item.title ? item.title[0] : '-'}</div>
                       )}
                     </div>
 
@@ -115,7 +115,7 @@ export default function OrdersPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                           <div style={{ fontSize: 18, fontWeight: 800 }}>{item.title ?? `Item #${o.shop_item_id}`}</div>
-                          <div style={{ color: 'var(--muted)', marginTop: 6 }}>Placed: {created ? created.toLocaleString() : '—'}</div>
+                          <div style={{ color: 'var(--muted)', marginTop: 6 }}>Placed: {created ? created.toLocaleString() : '-'}</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontSize: 12, color: 'var(--muted)' }}>Order #{o.id}</div>
@@ -124,7 +124,7 @@ export default function OrdersPage() {
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-                        <div style={{ color: 'var(--muted)' }}>Ship to: <strong>{o.slack_id ?? '—'}</strong></div>
+                        <div style={{ color: 'var(--muted)' }}>Ship to: <strong>{o.slack_id ?? '-'}</strong></div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ fontWeight: 800 }}>{o.amount}</div>
                           <img src="https://cdn.hackclub.com/019c6f69-6b4c-7c4a-91fb-287dfc078625/Cassos.png" alt="cassos" style={{ width: 26, height: 30 }} />
