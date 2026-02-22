@@ -212,6 +212,7 @@ h1 {
   display: grid;
   place-items: center;
   padding: 20px;
+  animation: guide-fade-in 180ms ease-out;
 }
 
 .guide-modal {
@@ -225,6 +226,18 @@ h1 {
     var(--card);
   box-shadow: 12px 12px 0 #000;
   padding: 22px;
+  transform-origin: 50% 18%;
+  animation: guide-pop-in 240ms cubic-bezier(0.2, 0.85, 0.25, 1);
+}
+
+@keyframes guide-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes guide-pop-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .guide-modal-head {
@@ -406,6 +419,21 @@ h2 {
 }
 
 /* GALLERY */
+.section#gallery {
+  padding-top: 20px;
+  margin-top: -28px;
+  padding-bottom: 68px;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255, 209, 102, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(38, 24, 18, 0.55), rgba(23, 14, 10, 0.78));
+  border-top: 1px dashed rgba(255, 183, 3, 0.4);
+  border-bottom: 1px dashed rgba(255, 183, 3, 0.4);
+}
+
+.section#gallery .section-note {
+  margin-bottom: 30px;
+}
+
 .gallery-box {
   height: 170px;
   border-radius: 20px;
