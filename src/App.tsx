@@ -110,27 +110,23 @@ function ChatIcon() {
   );
 }
 
-function RulerIcon() {
+function ShopIcon() {
   return (
     <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 16L16 4l4 4-12 12H4v-4Z" />
-      <path d="M13 7l4 4" />
-      <path d="M10 10l2 2" />
-      <path d="M7 13l2 2" />
+      <path d="M6 3h12l1 5H5l1-5Z" />
+      <path d="M4 8h16l-1.5 12h-13L4 8Z" />
+      <path d="M9 12a3 3 0 1 0 6 0" />
     </svg>
   );
 }
 
-function BrainIcon() {
+function MicIcon() {
   return (
     <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 8a3 3 0 0 1 6 0" />
-      <path d="M7 10a3 3 0 0 1 2-2.8" />
-      <path d="M17 10a3 3 0 0 0-2-2.8" />
-      <path d="M7 10a3 3 0 0 0 0 6h1" />
-      <path d="M17 10a3 3 0 0 1 0 6h-1" />
-      <path d="M12 6v12" />
-      <path d="M9 14a2 2 0 0 0 3 1.7A2 2 0 0 0 15 14" />
+      <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3Z" />
+      <path d="M19 11a7 7 0 0 1-14 0" />
+      <path d="M12 18v3" />
+      <path d="M8 21h8" />
     </svg>
   );
 }
@@ -152,6 +148,16 @@ function BoxIcon() {
       <path d="M3 7.5 12 12l9-4.5" />
       <path d="M12 12v9" />
     </svg>
+  );
+}
+
+function CassosIcon() {
+  return (
+    <img
+      src={PLACEHOLDER_CASSOS}
+      alt=""
+      style={{ width: "100%", height: "100%", objectFit: "contain" }}
+    />
   );
 }
 
@@ -319,28 +325,28 @@ const faqItems = [
 
 const steps: Array<{ title: string; body: string; tag: string; icon: ReactNode }> = [
   {
-    title: "1. Measure",
-    body: "Measure your device carefully. Button cutouts, camera bumps, and ports all matter.",
-    tag: "accuracy matters",
-    icon: <RulerIcon />,
+    title: "1. Design",
+    body: "Measure your device carefully, then design your enclosure in Fusion or Onshape. Button cutouts, camera bumps, and ports all matter. Add grip, texture, logos, and chaos.",
+    tag: "accuracy + CAD time",
+    icon: <PencilIcon />,
   },
   {
-    title: "2. Design",
-    body: "Design your enclosure in Fusion or Onshape. Add grip, texture, logos, chaos.",
-    tag: "CAD time",
-    icon: <BrainIcon />,
-  },
-  {
-    title: "3. Submit",
+    title: "2. Submit",
     body: "Upload your CAD file through the submission form. We will sanity-check it before printing.",
     tag: "STP / STEP",
     icon: <UploadIcon />,
   },
   {
-    title: "4. Ship",
+    title: "3. Ship",
     body: "We 3D print your enclosure and ship it straight to you. Yes, for real.",
     tag: "free plastic",
     icon: <BoxIcon />,
+  },
+  {
+    title: "4. Earn Cassos",
+    body: "Use cassos to redeem awesome shop items that help you along your CAD journey.",
+    tag: "shop rewards",
+    icon: <CassosIcon />,
   },
 ];
 
@@ -438,9 +444,18 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
                   <ActionLabel icon={<SubmitIcon />} text="Submit your project" />
                 </button>
               </a>
-              <a href="/weekly-challenges">
+              <a href="/shop">
                 <button className="btn secondary" type="button">
-                  <ActionLabel icon={<TrophyIcon />} text="Weekly Challenges" />
+                  <ActionLabel icon={<ShopIcon />} text="Visit the shop" />
+                </button>
+              </a>
+              <a
+                target="_blank"
+                rel="noreferrer"
+                href="https://hackclub.enterprise.slack.com/archives/C092D99G1RU"
+              >
+                <button className="btn secondary" type="button">
+                  <ActionLabel icon={<ChatIcon />} text="Join Slack" />
                 </button>
               </a>
             </div>
@@ -452,13 +467,18 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
               >
                 <ActionLabel icon={<PencilIcon />} text="Design Guide" />
               </button>
+              <a href="/weekly-challenges">
+                <button className="btn secondary" type="button">
+                  <ActionLabel icon={<TrophyIcon />} text="Weekly Challenges" />
+                </button>
+              </a>
               <a
                 target="_blank"
                 rel="noreferrer"
-                href="https://hackclub.enterprise.slack.com/archives/C092D99G1RU"
+                href="https://workshops.hackclub.com/"
               >
                 <button className="btn secondary" type="button">
-                  <ActionLabel icon={<ChatIcon />} text="Join Slack" />
+                  <ActionLabel icon={<MicIcon />} text="Run a workshop" />
                 </button>
               </a>
             </div>
@@ -504,7 +524,7 @@ function Paths({ onOpenGuides }: { onOpenGuides: () => void }) {
   return (
     <section className="section" id="paths">
       <div className="container">
-        <h2>Choose Your Path.</h2>
+        <h2>Choose Your Path</h2>
         <div className="section-note">Choose the path that fits your experience</div>
         <div className="grid" style={{ gap: 28, alignItems: 'stretch' }}>
           <div className="card" style={{ padding: '20px 32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 360 }}>
@@ -592,7 +612,6 @@ function Gallery() {
     <section className="section" id="gallery">
       <div className="container">
         <h2>Things Other People Made</h2>
-        <div className="section-note">expect questionable design choices</div>
         <div className="gallery-locked">
           <div className="grid">
             <div className="gallery-box" />
@@ -671,7 +690,7 @@ function Shop() {
           .shop-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
           @keyframes shop-scroll { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--scroll-distance, 50%))); } }
         `}</style>
-        {tiers.map((tier, idx) => {
+        {tiers.map((tier) => {
           const repeats = 2;
           const rowItems = Array.from({ length: repeats }, () => tier.items).flat();
           const scrollDistance = 100 / repeats;
@@ -681,7 +700,7 @@ function Shop() {
               <div
                 className="shop-track"
                 style={{
-                  animationDuration: `${14 + idx * 3}s`,
+                  animationDuration: "17s",
                   // @ts-expect-error custom property
                   "--scroll-distance": `${scrollDistance}%`
                 }}
@@ -784,8 +803,7 @@ function FAQ() {
 function Footer() {
   return (
     <footer>
-      Enclosure is a Hack Club YSWS • made with plastic, patience, and poor life
-      choices
+      Enclosure is a Hack Club CAD YSWS
     </footer>
   );
 }
@@ -810,14 +828,29 @@ export default function App() {
         }
         if (!res.ok) return;
         const data = await res.json();
-        // Derive slackId from HCA auth profile directly
         if (data?.name) setDisplayName(data.name);
-        if (data?.slackId) setSlackId(data.slackId);
+        let resolvedSlackId = typeof data?.slackId === "string" ? data.slackId : null;
+        if (!resolvedSlackId) {
+          try {
+            const meRes = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+            if (meRes.ok) {
+              const me = await meRes.json();
+              const identity = (me && me.identity) || {};
+              const hcSlackId = typeof identity?.slack_id === "string"
+                ? identity.slack_id
+                : typeof identity?.slackId === "string"
+                  ? identity.slackId
+                  : null;
+              if (hcSlackId) resolvedSlackId = hcSlackId;
+            }
+          } catch (_err) {}
+        }
+        if (resolvedSlackId) setSlackId(resolvedSlackId);
         // Prefer avatar from backend, else Cachet CDN
         if (data?.image) {
           setSlackAvatarUrl(data.image);
-        } else if (data?.slackId) {
-          setSlackAvatarUrl(`${CACHET_BASE}/users/${data.slackId}/r`);
+        } else if (resolvedSlackId) {
+          setSlackAvatarUrl(`${CACHET_BASE}/users/${resolvedSlackId}/r`);
         }
         if (typeof data?.credits === "number") setCredits(data.credits);
       } catch (_err) {}
@@ -852,6 +885,25 @@ export default function App() {
     };
   }, [showDesignGuideModal]);
 
+  // Warm the guide PDFs at app start so modal previews open faster.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const links: HTMLLinkElement[] = [];
+    for (const guide of DESIGN_GUIDES) {
+      const link = document.createElement("link");
+      link.rel = "prefetch";
+      link.as = "document";
+      link.href = guide.pdf;
+      document.head.appendChild(link);
+      links.push(link);
+    }
+    return () => {
+      for (const link of links) {
+        if (link.parentNode) link.parentNode.removeChild(link);
+      }
+    };
+  }, []);
+
   const initials = (displayName || "HC")
     .split(" ")
     .filter(Boolean)
@@ -865,6 +917,28 @@ export default function App() {
         isOpen={showDesignGuideModal}
         onClose={() => setShowDesignGuideModal(false)}
       />
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          left: -9999,
+          top: -9999,
+          width: 2,
+          height: 2,
+          overflow: "hidden",
+          opacity: 0,
+          pointerEvents: "none",
+        }}
+      >
+        {DESIGN_GUIDES.map((guide) => (
+          <iframe
+            key={`prewarm-${guide.key}`}
+            title={`Prewarm ${guide.title}`}
+            src={`${guide.pdf}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+            loading="eager"
+          />
+        ))}
+      </div>
       
       <div
         id="slack-avatar"
@@ -891,7 +965,16 @@ export default function App() {
       >
         {/* Credits display to the left of the avatar */}
           {typeof credits === "number" ? (
-            <div style={{ position: "absolute", right: 76, top: 12, zIndex: 2100 }} title={String(credits)}>
+            <div
+              style={{
+                position: "absolute",
+                right: 76,
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 2100,
+              }}
+              title={String(credits)}
+            >
               <div
                 style={{
                   display: "flex",
@@ -971,15 +1054,8 @@ export default function App() {
       <Hero onOpenGuides={() => setShowDesignGuideModal(true)} />
       <HowItWorks />
       <Paths onOpenGuides={() => setShowDesignGuideModal(true)} />
-      <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: - 54 }}>
-        <div style={{ maxWidth: 960, color: 'var(--muted)', textAlign: 'center' }}>
-          <b>
-          You can switch paths at any time. Choose the appropriate option on the submission form when you submit your project.
-          </b>
-        </div>
-      </div>
-      <Shop />
       <Gallery />
+      <Shop />
       <Requirements />
       <FAQ />
       <Footer />
