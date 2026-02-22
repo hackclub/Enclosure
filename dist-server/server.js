@@ -352,7 +352,7 @@ app.get("/api/auth/login", (req, res) => {
     url.searchParams.set("client_id", IDENTITY_CLIENT_ID);
     url.searchParams.set("redirect_uri", IDENTITY_REDIRECT_URI);
     url.searchParams.set("response_type", "code");
-    url.searchParams.set("scope", "profile email name slack_id verification_status");
+    url.searchParams.set("scope", "profile email name slack_id verification_status address ysws_eligible");
     if (continueUrl) {
         try {
             const payload = Buffer.from(JSON.stringify({ cont: continueUrl }), "utf8").toString("base64url");
