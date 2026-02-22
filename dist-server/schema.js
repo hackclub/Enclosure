@@ -15,6 +15,7 @@ export const user = pgTable("user", {
     verificationStatus: text("verification_status"),
     identityToken: text("identity_token"),
     refreshToken: text("refresh_token"),
+    address: text("address"),
     createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: false }).defaultNow()
 });
@@ -82,5 +83,6 @@ export const orders = pgTable("orders", {
     slackId: text("slack_id"),
     amount: text("amount").notNull(),
     status: text("status").default("pending"),
+    address: text("address"),
     createdAt: timestamp("created_at", { withTimezone: false }).defaultNow()
 });

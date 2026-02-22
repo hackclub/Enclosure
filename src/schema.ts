@@ -24,7 +24,8 @@ export const user = pgTable("user", {
   identityToken: text("identity_token"),
   refreshToken: text("refresh_token"),
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: false }).defaultNow()
+  updatedAt: timestamp("updated_at", { withTimezone: false }).defaultNow(),
+  address: text("address"),
 });
 
 export const submissions = pgTable("submissions", {
@@ -100,5 +101,6 @@ export const orders = pgTable("orders", {
   amount: text("amount").notNull(),
   status: text("status").default("pending"),
   fulfill_proof: text("fulfill_proof"), // restored column
-  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow()
+  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
+  address: text("address"),
 });
