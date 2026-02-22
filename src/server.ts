@@ -691,7 +691,7 @@ app.get("/api/auth/profile", async (req, res) => {
 
 // Use process.cwd() to reliably reference the built `dist` directory
 // regardless of how the server is executed (works on Heroku).
-// On Vercel, static files are served by the CDN — skip filesystem serving.
+// On Vercel, static files are served by the CDN, so skip filesystem serving.
 const clientPath = path.join(process.cwd(), "dist");
 if (!process.env.VERCEL) {
 const assetsPath = path.join(process.cwd(), "dist", "assets");
