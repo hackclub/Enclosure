@@ -263,7 +263,7 @@ function Hero() {
               <a
                 target="_blank"
                 rel="noreferrer"
-                href="https://workshops.hackclub.com/"
+                href="https://forms.hackclub.com/enclosure-workshop"
               >
                 <button className="btn secondary" type="button">
                   Run a workshop 

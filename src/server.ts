@@ -1,4 +1,21 @@
 import "dotenv/config";
+// Run sync_postgres_to_airtable.mjs script on server start
+
+import { spawn } from "child_process";
+import path from "node:path";
+function startSyncScript() {
+  const syncScript = path.join(process.cwd(), "scripts", "sync_postgres_to_airtable.mjs");
+  const proc = spawn(process.platform === "win32" ? "node" : "node", [syncScript], { stdio: "inherit" });
+  proc.on("exit", code => {
+    console.log("sync_postgres_to_airtable.mjs exited with code", code);
+    // Restart automatically if it exits unexpectedly
+    setTimeout(() => {
+      console.log("Restarting sync_postgres_to_airtable.mjs...");
+      startSyncScript();
+    }, 5000); // 5 second delay before restart
+  });
+}
+startSyncScript();
 import express from "express";
 console.log('server.ts loaded at', new Date().toISOString());
 import cors from "cors";
@@ -295,7 +312,36 @@ app.patch("/api/projects/:id/status", async (req, res) => {
     return res.status(404).json({ error: "project not found" });
   }
 
-  // If project was approved, attempt to credit the submitting user based on Airtable hours
+  // If checkbox is ticked, update user credits based on Slack ID and approved hours
+  try {
+    // Example: tick field is 'tick', Slack ID field is 'slackId', approved hours field is 'approvedHours'
+    if (updated.tick === true) {
+      const slackId = updated.slackId;
+      const approvedHours = Number(updated.approvedHours ?? 0);
+      if (slackId && approvedHours > 0) {
+        // Find user by Slack ID
+        const [user] = await db.select().from(users).where(eq(users.slackId, slackId)).limit(1);
+        if (user) {
+          const multiplier = HOURS_TO_CREDITS;
+          const creditsToAdd = Math.floor(approvedHours * multiplier);
+          const prevCredits = Number(user.credits ?? 0) || 0;
+          const nextCredits = prevCredits + creditsToAdd;
+          await db.update(users).set({ credits: String(nextCredits) }).where(eq(users.id, user.id));
+          await db.insert(shopTransactions).values({ userId: user.id, amount: String(creditsToAdd), reason: `Project ticked: ${updated.id}`, createdAt: new Date() });
+          try {
+            await upsertAirtableUser({ id: user.id, credits: String(nextCredits), updatedAt: new Date() });
+          } catch (e) { console.error('[tick] airtable upsert failed', String(e)); }
+          console.log('Ticked project, credited user', slackId, creditsToAdd, 'hours=', approvedHours);
+        } else {
+          console.log('No user found for Slack ID:', slackId);
+        }
+      } else {
+        console.log('Missing Slack ID or approved hours for ticked project', updated.id);
+      }
+    }
+  } catch (err) {
+    console.error('tick processing failed', String(err));
+  }
   try {
     if (String(status).toLowerCase() === "approved") {
       // Try to find a submitted project record that matches name
@@ -351,10 +397,10 @@ app.get("/api/auth/login", (req, res) => {
     const force = String((req.query && req.query.force) || "");
 
     const url = new URL("/oauth/authorize", IDENTITY_HOST);
-    url.searchParams.set("client_id", IDENTITY_CLIENT_ID);
-    url.searchParams.set("redirect_uri", IDENTITY_REDIRECT_URI);
-    url.searchParams.set("response_type", "code");
-    url.searchParams.set("scope", "profile email name slack_id verification_status");
+      url.searchParams.set("client_id", IDENTITY_CLIENT_ID);
+      url.searchParams.set("redirect_uri", IDENTITY_REDIRECT_URI);
+      url.searchParams.set("response_type", "code");
+      url.searchParams.set("scope", "profile email name slack_id verification_status");
 
     if (continueUrl) {
       try {
@@ -451,6 +497,7 @@ app.get("/api/auth/callback", async (req, res) => {
           return full || undefined;
         })();
     const slackId = typeof (identity as { slack_id?: unknown }).slack_id === "string" ? (identity as { slack_id?: unknown }).slack_id : undefined;
+    const address = typeof (identity as { address?: unknown }).address === "string" ? (identity as { address?: unknown }).address : undefined;
     const verificationStatus = typeof (identity as { verification_status?: unknown }).verification_status === "string"
       ? (identity as { verification_status?: unknown }).verification_status
       : undefined;
@@ -514,6 +561,7 @@ app.get("/api/auth/callback", async (req, res) => {
         refreshToken: string | null;
         banned: boolean;
         updatedAt: Date;
+        address: string | null;
         } = {
         name: pickString(identityName ?? existing[0]?.name),
         email: emailValue,
@@ -525,6 +573,7 @@ app.get("/api/auth/callback", async (req, res) => {
         identityToken: typeof tokenJson.access_token === "string" ? tokenJson.access_token : existing[0]?.identityToken || null,
         refreshToken: typeof tokenJson.refresh_token === "string" ? tokenJson.refresh_token : existing[0]?.refreshToken || null,
         banned: !effectiveEligible,
+        address: address ?? existing[0]?.address ?? null,
           updatedAt: new Date()
       };
 
