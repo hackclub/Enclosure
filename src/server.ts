@@ -156,6 +156,150 @@ const corsOptions = process.env.NODE_ENV === 'production'
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Simple request logger to help debug incoming webhooks
+app.use((req, _res, next) => {
+  try {
+    const now = new Date().toISOString();
+    // Avoid logging potentially large bodies here; log headers and route
+    console.log(`[req] ${now} ${req.method} ${req.originalUrl} headers=${JSON.stringify(req.headers)}`);
+  } catch (e) {
+    // ignore logging errors
+  }
+  next();
+});
+
+// Airtable webhook endpoints
+// Optional security: set WEBHOOK_SECRET env var and Airtable script should send header 'x-webhook-secret'
+app.post('/webhook/airtable/users', async (req, res) => {
+  try {
+    const secret = process.env.WEBHOOK_SECRET;
+    if (secret) {
+      const incoming = String(req.headers['x-webhook-secret'] || '');
+      if (!incoming || incoming !== secret) return res.status(403).json({ error: 'invalid webhook secret' });
+    }
+
+    console.log('[webhook/users] payload received at', new Date().toISOString());
+    const record = req.body;
+    // Log the raw body to help debug different payload shapes
+    try { console.log('[webhook/users] raw body:', JSON.stringify(record)); } catch {}
+
+    // Airtable record from automation script should be the record object (with .id and .fields)
+    let fields = (record && (record.fields || record)) || {};
+
+    // If the automation only sends a partial payload (for example only the record id
+    // or only the changed fields), try fetching the full record from Airtable so we
+    // have identifying fields like Email or identityId.
+    const hasIdentity = !!(fields.identityId || fields.IdentityId || fields.identity_id);
+    const hasEmail = !!(fields.Email || fields.email || fields.email_address);
+    if (!hasIdentity && !hasEmail && record && record.id && AIRTABLE_BASE_ID) {
+      try {
+        const userTable = process.env.AIRTABLE_USER_TABLE || process.env.AIRTABLE_TABLE_NAME || 'users';
+        const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(userTable)}/${encodeURIComponent(record.id)}`;
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.AIRTABLE_PAT || process.env.AIRTABLE_API_KEY || ''}` } });
+        if (r.ok) {
+          const jr = await r.json();
+          fields = jr.fields || fields;
+          console.log('[webhook/users] fetched full record from airtable, fields keys:', Object.keys(fields));
+        } else {
+          console.log('[webhook/users] airtable fetch failed', r.status, await r.text());
+        }
+      } catch (e) {
+        console.error('[webhook/users] airtable fetch error', String(e));
+      }
+    }
+
+    const identityId = fields.identityId || fields.IdentityId || fields.identity_id || undefined;
+    const email = fields.Email || fields.email || fields.email_address || null;
+
+    const updates: Record<string, any> = {};
+    if (fields.Name) updates.name = String(fields.Name);
+    if (fields.Email) updates.email = String(fields.Email);
+    if (fields.Image) updates.image = String(fields.Image);
+    if (fields.SlackId) updates.slackId = String(fields.SlackId);
+    if (fields.Banned !== undefined) updates.banned = Boolean(fields.Banned);
+    const rawCredits = fields.credits ?? fields.Credits ?? fields.CREDITs ?? fields.Credits ?? fields['Shop Credits'];
+    if (rawCredits !== undefined) updates.credits = String(rawCredits ?? '0');
+    if (fields.verificationStatus !== undefined) updates.verificationStatus = String(fields.verificationStatus);
+    updates.updatedAt = new Date();
+
+    // Try identityId first, else email
+    let updated: any = null;
+    if (identityId) {
+      const [u] = await db.update(users).set(updates).where(eq(users.id, String(identityId))).returning();
+      updated = u || null;
+    } else if (email) {
+      const [u] = await db.update(users).set(updates).where(eq(users.email, String(email))).returning();
+      updated = u || null;
+    }
+
+    // If no existing user updated, optionally insert a new user when identityId present
+    if (!updated && identityId) {
+      try {
+        const [created] = await db.insert(users).values({ id: String(identityId), ...updates, createdAt: new Date() }).returning();
+        updated = created;
+      } catch (e) {
+        console.error('[webhook/users] insert failed', String(e));
+      }
+    }
+
+    console.log('[webhook/users] finished', { identityId, email, updated: !!updated });
+    return res.json({ ok: true, updated: !!updated, recordId: record?.id ?? null });
+  } catch (err) {
+    console.error('[webhook/users] error', String(err));
+    return res.status(500).json({ error: String(err) });
+  }
+});
+
+app.post('/webhook/airtable/orders', async (req, res) => {
+  try {
+    const secret = process.env.WEBHOOK_SECRET;
+    if (secret) {
+      const incoming = String(req.headers['x-webhook-secret'] || '');
+      if (!incoming || incoming !== secret) return res.status(403).json({ error: 'invalid webhook secret' });
+    }
+
+    console.log('[webhook/orders] payload received at', new Date().toISOString());
+    const record = req.body;
+    const fields = (record && (record.fields || record)) || {};
+
+    const orderIdRaw = fields.OrderId || fields.orderId || fields.id;
+    const orderId = orderIdRaw ? Number(orderIdRaw) : null;
+    const updates: Record<string, any> = {};
+    if (fields.UserId) updates.userId = String(fields.UserId);
+    if (fields.ShopItemId) updates.shopItemId = String(fields.ShopItemId);
+    if (fields.Amount !== undefined) updates.amount = String(fields.Amount);
+    if (fields.Status !== undefined) updates.status = String(fields.Status);
+    if (fields.SlackId !== undefined) updates.slackId = String(fields.SlackId);
+    updates.updatedAt = new Date();
+
+    let updated: any = null;
+    if (orderId) {
+      const found = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+      if (found && found.length) {
+        const [u] = await db.update(orders).set(updates).where(eq(orders.id, orderId)).returning();
+        updated = u || null;
+      } else {
+        // create new order if not found
+        try {
+          const insertVals: Record<string, any> = Object.assign({}, updates);
+          if (!insertVals.userId) insertVals.userId = updates.userId ?? null;
+          if (!insertVals.amount) insertVals.amount = updates.amount ?? '0';
+          const [created] = await db.insert(orders).values(insertVals).returning();
+          updated = created;
+        } catch (e) {
+          console.error('[webhook/orders] insert failed', String(e));
+        }
+      }
+    }
+
+    console.log('[webhook/orders] finished', { orderId, updated: !!updated });
+    return res.json({ ok: true, updated: !!updated, recordId: record?.id ?? null });
+  } catch (err) {
+    console.error('[webhook/orders] error', String(err));
+    return res.status(500).json({ error: String(err) });
+  }
+});
+
 // Helper to rewrite image paths to a CDN when configured.
 const CDN_BASE = process.env.CDN_BASE_URL || "";
 function toCdnUrl(img: string | null | undefined) {
@@ -809,6 +953,16 @@ app.post('/api/webhook/airtable', async (req, res) => {
     console.error('[webhook] airtable sync failed', String(err));
     res.status(500).json({ error: 'sync failed', detail: String(err) });
   }
+});
+
+app.post('/webhook/airtable/users', async (req, res) => {
+  const user = req.body;
+  res.sendStatus(200);
+});
+
+app.post('/webhook/airtable/orders', async (req, res) => { 
+  const order = req.body;
+  res.sendStatus(200); 
 });
 
 app.get("/api/shop-items", async (req, res) => {
