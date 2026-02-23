@@ -312,36 +312,7 @@ app.patch("/api/projects/:id/status", async (req, res) => {
     return res.status(404).json({ error: "project not found" });
   }
 
-  // If checkbox is ticked, update user credits based on Slack ID and approved hours
-  try {
-    // Example: tick field is 'tick', Slack ID field is 'slackId', approved hours field is 'approvedHours'
-    if (updated.tick === true) {
-      const slackId = updated.slackId;
-      const approvedHours = Number(updated.approvedHours ?? 0);
-      if (slackId && approvedHours > 0) {
-        // Find user by Slack ID
-        const [user] = await db.select().from(users).where(eq(users.slackId, slackId)).limit(1);
-        if (user) {
-          const multiplier = HOURS_TO_CREDITS;
-          const creditsToAdd = Math.floor(approvedHours * multiplier);
-          const prevCredits = Number(user.credits ?? 0) || 0;
-          const nextCredits = prevCredits + creditsToAdd;
-          await db.update(users).set({ credits: String(nextCredits) }).where(eq(users.id, user.id));
-          await db.insert(shopTransactions).values({ userId: user.id, amount: String(creditsToAdd), reason: `Project ticked: ${updated.id}`, createdAt: new Date() });
-          try {
-            await upsertAirtableUser({ id: user.id, credits: String(nextCredits), updatedAt: new Date() });
-          } catch (e) { console.error('[tick] airtable upsert failed', String(e)); }
-          console.log('Ticked project, credited user', slackId, creditsToAdd, 'hours=', approvedHours);
-        } else {
-          console.log('No user found for Slack ID:', slackId);
-        }
-      } else {
-        console.log('Missing Slack ID or approved hours for ticked project', updated.id);
-      }
-    }
-  } catch (err) {
-    console.error('tick processing failed', String(err));
-  }
+  // If project was approved, attempt to credit the submitting user based on Airtable hours
   try {
     if (String(status).toLowerCase() === "approved") {
       // Try to find a submitted project record that matches name
@@ -687,31 +658,7 @@ app.get("/api/auth/profile", async (req, res) => {
         const q = await pool.query(sql, [token, 1]);
         console.log('[profile] raw query returned rows:', q.rows.length);
         if (q.rows && q.rows.length) userRow = q.rows[0];
-        // If slack_id is missing, try to fetch it from Hack Club Identity first.
-        if (userRow && !userRow.slack_id) {
-          try {
-            const meUrl = new URL("/api/v1/me", IDENTITY_HOST);
-            const meRes = await fetch(meUrl, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            if (meRes.ok) {
-              const meJson = (await meRes.json()) as { identity?: Record<string, unknown> };
-              const identity = meJson.identity || {};
-              const hcSlackId = typeof (identity as { slack_id?: unknown }).slack_id === "string"
-                ? (identity as { slack_id?: unknown }).slack_id
-                : typeof (identity as { slackId?: unknown }).slackId === "string"
-                  ? (identity as { slackId?: unknown }).slackId
-                  : undefined;
-              if (hcSlackId) {
-                userRow.slack_id = hcSlackId;
-                await pool.query('update "user" set "slack_id" = $1 where "id" = $2', [hcSlackId, userRow.id]);
-              }
-            }
-          } catch (err) {
-            console.error('[api/auth/profile] identity slack lookup failed', String(err));
-          }
-        }
-        // If still missing, try to fetch it from Slack API.
+        // If slack_id is missing, try to fetch it from Slack API
         if (userRow && !userRow.slack_id && userRow.email && process.env.SLACK_BOT_TOKEN) {
           const slackRes = await fetch("https://slack.com/api/users.lookupByEmail", {
             method: "POST",
@@ -745,13 +692,13 @@ app.get("/api/auth/profile", async (req, res) => {
       id: userRow.id,
       name: userRow.name,
       email: userRow.email,
-      emailVerified: Boolean(userRow.email_verified ?? userRow.emailVerified),
+      emailVerified: userRow.emailVerified,
       image: userRow.image,
-      slackId: userRow.slack_id ?? userRow.slackId ?? null,
+      slackId: userRow.slack_id, // derive from DB field
       role: userRow.role,
       canManageShop,
       shopOpen: canManageShop,
-      identityToken: canManageShop ? (userRow.identity_token ?? userRow.identityToken ?? null) : null,
+      identityToken: canManageShop ? userRow.identityToken : null,
       identityLinked: Boolean(userRow.id),
       credits: Number(userRow.credits ?? 0),
     });
@@ -764,7 +711,7 @@ app.get("/api/auth/profile", async (req, res) => {
 
 // Use process.cwd() to reliably reference the built `dist` directory
 // regardless of how the server is executed (works on Heroku).
-// On Vercel, static files are served by the CDN, so skip filesystem serving.
+// On Vercel, static files are served by the CDN — skip filesystem serving.
 const clientPath = path.join(process.cwd(), "dist");
 if (!process.env.VERCEL) {
 const assetsPath = path.join(process.cwd(), "dist", "assets");
