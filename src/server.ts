@@ -154,7 +154,42 @@ const corsOptions = process.env.NODE_ENV === 'production'
   : { origin: true, credentials: true };
 
 app.use(cors(corsOptions));
-app.use(express.json());
+
+// Robust body parsing: try JSON first, but if body-parser throws a SyntaxError
+// (Airtable sometimes sends a bare string or malformed JSON), fall back to
+// reading the raw text and attempt to parse or keep as string.
+app.use((req, res, next) => {
+  const jsonParser = express.json();
+  jsonParser(req, res, (err) => {
+    if (!err) return next();
+    // If body-parser returned a SyntaxError, try to read raw text instead
+    if (err && err.type === 'entity.parse.failed') {
+      const textParser = express.text({ type: '*/*' });
+      textParser(req, res, (err2) => {
+        if (err2) return next(err2);
+        // try to coerce to JSON if it looks like JSON, otherwise leave as string
+        try {
+          const maybe = (req.body || '').toString();
+          // strip accidental surrounding template braces
+          const cleaned = maybe.trim().replace(/^\s*"+|"+\s*$/g, '');
+          if (cleaned.startsWith('{') || cleaned.startsWith('[')) {
+            req.body = JSON.parse(cleaned);
+          } else if (cleaned.length) {
+            // accept raw id strings as { id: 'rec...' }
+            req.body = { id: cleaned };
+          } else {
+            req.body = {};
+          }
+        } catch (e) {
+          req.body = { id: (req.body || '').toString() };
+        }
+        return next();
+      });
+    } else {
+      return next(err);
+    }
+  });
+});
 
 // Simple request logger to help debug incoming webhooks
 app.use((req, _res, next) => {
@@ -260,15 +295,39 @@ app.post('/webhook/airtable/orders', async (req, res) => {
 
     console.log('[webhook/orders] payload received at', new Date().toISOString());
     const record = req.body;
-    const fields = (record && (record.fields || record)) || {};
+    try { console.log('[webhook/orders] raw body:', JSON.stringify(record)); } catch {}
+
+    // Extract fields (automation may send either the record object or just fields)
+    let fields = (record && (record.fields || record)) || {};
+
+    // If payload lacks identifying order fields, but includes an Airtable record id,
+    // fetch the full record so we can access OrderId / other fields.
+    const hasOrderId = !!(fields.OrderId || fields.orderId || fields.id);
+    if (!hasOrderId && record && record.id && AIRTABLE_BASE_ID) {
+      try {
+        const orderTable = process.env.AIRTABLE_SHOP_TXN_TABLE || process.env.AIRTABLE_TABLE_NAME || 'shop_txns';
+        const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(orderTable)}/${encodeURIComponent(record.id)}`;
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.AIRTABLE_PAT || process.env.AIRTABLE_API_KEY || ''}` } });
+        if (r.ok) {
+          const jr = await r.json();
+          fields = jr.fields || fields;
+          console.log('[webhook/orders] fetched full record from airtable, fields keys:', Object.keys(fields));
+        } else {
+          console.log('[webhook/orders] airtable fetch failed', r.status, await r.text());
+        }
+      } catch (e) {
+        console.error('[webhook/orders] airtable fetch error', String(e));
+      }
+    }
 
     const orderIdRaw = fields.OrderId || fields.orderId || fields.id;
     const orderId = orderIdRaw ? Number(orderIdRaw) : null;
     const updates: Record<string, any> = {};
     if (fields.UserId) updates.userId = String(fields.UserId);
     if (fields.ShopItemId) updates.shopItemId = String(fields.ShopItemId);
-    if (fields.Amount !== undefined) updates.amount = String(fields.Amount);
-    if (fields.Status !== undefined) updates.status = String(fields.Status);
+    const rawAmount = fields.Amount ?? fields.amount ?? fields.AmountPaid ?? fields['Amount'];
+    if (rawAmount !== undefined) updates.amount = String(rawAmount);
+    if (fields.Status !== undefined) updates.status = String(fields.Status || fields.status);
     if (fields.SlackId !== undefined) updates.slackId = String(fields.SlackId);
     updates.updatedAt = new Date();
 
