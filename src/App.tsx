@@ -404,26 +404,32 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
             alt="Enclosure logo"
           />
           <div className="covers-wrap">
-            <img
-              className="cover-img cover-1"
-              src={PLACEHOLDER_COVER_1}
-              alt="Enclosure cover example 1"
-            />
-            <img
-              className="cover-img cover-2"
-              src={PLACEHOLDER_COVER_2}
-              alt="Enclosure cover example 2"
-            />
-            <img
-              className="cover-img cover-3"
-              src={PLACEHOLDER_COVER_3}
-              alt="Enclosure cover example 3"
-            />
-            <img
-              className="cover-img cover-4"
-              src={PLACEHOLDER_COVER_4}
-              alt="Enclosure cover example 4"
-            />
+            <div className="cover-img cover-1">
+              <a href="https://github.com/taciturnaxolotl/inky" target="_blank" rel="noreferrer">
+                <img
+                  src={PLACEHOLDER_COVER_1}
+                  alt="Enclosure cover example 1"
+                />
+              </a>
+            </div>
+            <div className="cover-img cover-2">
+              <img
+                src={PLACEHOLDER_COVER_2}
+                alt="Enclosure cover example 2"
+              />
+            </div>
+            <div className="cover-img cover-3">
+              <img
+                src={PLACEHOLDER_COVER_3}
+                alt="Enclosure cover example 3"
+              />
+            </div>
+            <div className="cover-img cover-4">
+              <img
+                src={PLACEHOLDER_COVER_4}
+                alt="Enclosure cover example 4"
+              />
+            </div>
           </div>
         </div>
         <p>
@@ -635,33 +641,33 @@ function Shop() {
         { label: "Sticker pack", note: "fresh vinyl", img: "https://placehold.co/200x140?text=Stickers" },
         { label: "Keycaps", note: "HC set", img: "https://placehold.co/200x140?text=Keycaps" },
         { label: "3D print credit", note: "$10", img: "https://placehold.co/200x140?text=3D+Print" },
-        { label: "Zombo domain", note: "1yr", img: "https://placehold.co/200x140?text=Domain" },
-        { label: "Hot chocolate", note: "treat", img: "https://placehold.co/200x140?text=Treat" },
-        { label: "HackDucky", note: "fun", img: "https://placehold.co/200x140?text=Ducky" },
+        { label: "Domain Credits", note: "1yr", img: "https://placehold.co/200x140?text=Domain" },
+        { label: "Hosting Credits", note: "Deploying...", img: "https://cdn.hackclub.com/019c84b8-ca49-7cfd-bf18-77290996f822/hosting.webp" },
+        { label: "Filament Grant !", note: "fun", img: "https://cdn.hackclub.com/019c84b6-2f1e-70b2-a3c5-8ed865e5a0ed/download%20(1).jpg" },
         { label: "Smolāj", note: "squish", img: "https://placehold.co/200x140?text=Plush" },
-        { label: "Pinecil", note: "solder", img: "https://placehold.co/200x140?text=Iron" },
-        { label: "Notebook", note: "grid", img: "https://placehold.co/200x140?text=Notebook" },
+        { label: "Solderin Iron Grant", note: "solder", img: "https://cdn.hackclub.com/019c84b4-5989-7766-8c89-c7f494d3a57d/images%20(1).jpg" },
+        { label: "Solder", note: "grid", img: "https://cdn.hackclub.com/019c84bc-51ba-7a96-9b6c-a4f9d25920f4/download%20(2).jpg" },
       ],
     },
     {
       title: "20–99 hour prizes",
       direction: "reverse" as const,
       items: [
-        { label: "Raspberry Pi 5", note: "48h", img: "https://placehold.co/200x140?text=Pi+5" },
+        { label: "Raspberry Pi 5", note: "Yummy !", img: "https://cdn.hackclub.com/019c84a7-70f8-7fdc-b797-ecf8f2eef3be/81XB4LUuFOL.jpg" },
         { label: "2TB SSD", note: "storage", img: "https://placehold.co/200x140?text=SSD" },
-        { label: "Open Source tix", note: "2026", img: "https://placehold.co/200x140?text=Tickets" },
+        { label: "PC Building Simulator", note: "2026", img: "https://cdn.hackclub.com/019c84c8-1c4a-7b03-91b9-91cc39230b96/images%20(2).jpg" },
         { label: "Raspberry Pi 500", note: "desktop", img: "https://placehold.co/200x140?text=Pi+500" },
         { label: "Magic Keyboard", note: "wireless", img: "https://placehold.co/200x140?text=Keyboard" },
         { label: "Flipper Zero", note: "hacks", img: "https://placehold.co/200x140?text=Flipper" },
         { label: "Yubikey", note: "security", img: "https://placehold.co/200x140?text=YubiKey" },
-        { label: "CMF Buds", note: "audio", img: "https://placehold.co/200x140?text=Earbuds" },
+        { label: "Headphone Grant", note: "audio", img: "https://cdn.hackclub.com/019c84b2-4d11-78ba-8426-eb9524fa7bf7/shopping.webp" },
       ],
     },
     {
       title: "100+ hour prizes",
       direction: "normal" as const,
       items: [
-        { label: "Bambu Lab A1 mini", note: "printer", img: "https://placehold.co/200x140?text=Printer" },
+        { label: "Bambu Lab A1 mini", note: "printer", img: "https://cdn.hackclub.com/019c84b9-9483-75e4-93a8-1617a7359421/shopping%20(1).webp" },
         { label: "Pebble Time 2", note: "classic", img: "https://placehold.co/200x140?text=Watch" },
         { label: "Proxmark 3", note: "RFID", img: "https://placehold.co/200x140?text=RFID" },
         { label: "Quest 3", note: "VR", img: "https://placehold.co/200x140?text=VR" },
@@ -686,8 +692,8 @@ function Shop() {
           .shop-card:nth-child(even) { transform: rotate(1deg); }
           .shop-card h5 { margin: 0 0 6px; font-family: 'Patrick Hand', cursive; font-size: 1.1rem; }
           .shop-card .note { color: var(--muted); font-size: 0.9rem; }
-          .shop-img { width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; border: 2px solid var(--border); background: #1c120d; }
-          .shop-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+          .shop-img { width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; border: 2px solid var(--border); background: #1c120d; display: flex; align-items: center; justify-content: center; }
+          .shop-img img { width: 100%; height: 100%; object-fit: contain; display: block; max-width: 200px; max-height: 150px; background: #fff; }
           @keyframes shop-scroll { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--scroll-distance, 50%))); } }
         `}</style>
         {tiers.map((tier) => {
@@ -863,7 +869,10 @@ export default function App() {
     const handleClick = (e: MouseEvent) => {
       const popup = document.getElementById('slack-popup');
       const avatar = document.getElementById('slack-avatar');
-      if (popup && !popup.contains(e.target as Node) && avatar && !avatar.contains(e.target as Node)) {
+      if (
+        popup && !popup.contains(e.target as Node) &&
+        avatar && !avatar.contains(e.target as Node)
+      ) {
         setShowSlackPopup(false);
       }
     };
@@ -958,10 +967,8 @@ export default function App() {
           zIndex: 2000,
           boxShadow: "4px 4px 0 #000",
           fontWeight: 700,
-          cursor: "pointer",
         }}
         title={displayName || "User"}
-        onClick={() => setShowSlackPopup((v) => !v)}
       >
         {/* Credits display to the left of the avatar */}
           {typeof credits === "number" ? (
@@ -987,7 +994,7 @@ export default function App() {
                   boxShadow: "2px 2px 0 #000",
                 }}
               >
-                <div style={{ fontWeight: 800, color: "#b45309", fontSize: 16, minWidth: 28, textAlign: "center" }}>{credits}</div>
+                <div style={{ fontWeight: 800, color: "#b45309", fontSize: 16, minWidth: 24, textAlign: "center" }}>{credits}</div>
                 <img
                   src={PLACEHOLDER_CASSOS}
                   alt={typeof credits === 'number' ? `${credits} cassos` : 'cassos'}
@@ -1000,10 +1007,28 @@ export default function App() {
           <img
             src={slackAvatarUrl}
             alt={displayName || "Slack profile"}
-            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%", cursor: 'pointer' }}
+            onClick={e => {
+              e.stopPropagation();
+              setShowSlackPopup(true);
+              setTimeout(() => {
+                const input = document.getElementById('slack-id-input');
+                if (input) input.focus();
+              }, 100);
+            }}
           />
         ) : (
-          <span style={{ borderRadius: "50%", width: "100%", height: "100%", display: "grid", placeItems: "center" }}>{initials}</span>
+          <span
+            style={{ borderRadius: "50%", width: "100%", height: "100%", display: "grid", placeItems: "center", cursor: 'pointer' }}
+            onClick={e => {
+              e.stopPropagation();
+              setShowSlackPopup(true);
+              setTimeout(() => {
+                const input = document.getElementById('slack-id-input');
+                if (input) input.focus();
+              }, 100);
+            }}
+          >{initials}</span>
         )}
         {showSlackPopup && (
           <div
@@ -1012,27 +1037,43 @@ export default function App() {
               position: "fixed",
               top: 90,
               right: 20,
-              minWidth: 220,
+              minWidth: 260,
               background: "#fff",
-              border: "3px solid #ec3750",
-              borderRadius: 10,
+              border: "3px solid #b45309",
+              borderRadius: 14,
               boxShadow: "0 8px 24px #0006",
-              padding: "16px 20px",
+              padding: "18px 22px",
               zIndex: 3000,
               color: "#222",
-              fontSize: "1.05rem",
-              fontWeight: 600,
-              textAlign: "left",
+              fontSize: "1.1rem",
+              fontWeight: 700,
+              textAlign: "center",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
+              gap: 8,
             }}
           >
-            <div style={{ marginBottom: 8, color: '#ec3750', fontWeight: 700 }}>
-              Slack ID:
+            <div style={{ marginBottom: 8, color: '#b45309', fontWeight: 800, fontSize: '1.15rem' }}>
+              Slack ID
             </div>
-            <div style={{ wordBreak: "break-all", fontFamily: 'monospace', fontSize: '1.1rem', marginBottom: 10 }}>
-              {slackId ? slackId : "Slack ID not available."}
+            <div
+              style={{
+                fontFamily: 'monospace',
+                fontSize: '1.25rem',
+                padding: '10px 18px',
+                border: '2px solid #b45309',
+                borderRadius: 10,
+                background: '#fffbe7',
+                color: '#b45309',
+                fontWeight: 700,
+                minWidth: 120,
+                marginBottom: 6,
+                boxShadow: '2px 2px 0 #b45309',
+                letterSpacing: '0.5px',
+              }}
+            >
+              {slackId ? slackId : 'Slack ID not available'}
             </div>
           </div>
         )}
