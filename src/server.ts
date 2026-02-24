@@ -19,7 +19,6 @@ startSyncScript();
 import express from "express";
 console.log('server.ts loaded at', new Date().toISOString());
 import cors from "cors";
-import path from "node:path";
 import fs from "node:fs";
 import { desc, eq } from "drizzle-orm";
 import { db } from "./db.js";
