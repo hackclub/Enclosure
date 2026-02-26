@@ -15,7 +15,16 @@ function startSyncScript() {
     }, 5000); // 5 second delay before restart
   });
 }
-startSyncScript();
+const HAS_AIRTABLE_SYNC_CONFIG = Boolean(
+  (process.env.AIRTABLE_API_KEY || process.env.AIRTABLE_PAT) &&
+  process.env.AIRTABLE_BASE_ID &&
+  process.env.DATABASE_URL
+);
+if (HAS_AIRTABLE_SYNC_CONFIG) {
+  startSyncScript();
+} else {
+  console.log("Skipping sync_postgres_to_airtable.mjs (missing Airtable/DB config)");
+}
 import express from "express";
 console.log('server.ts loaded at', new Date().toISOString());
 import cors from "cors";
@@ -61,7 +70,9 @@ const AIRTABLE_HOURS_FIELD = process.env.AIRTABLE_HOURS_FIELD || "Hours";
 const AIRTABLE_APPROVED_HOURS_FIELD = process.env.AIRTABLE_APPROVED_HOURS_FIELD || AIRTABLE_HOURS_FIELD;
 const AIRTABLE_APPROVAL_FIELD = process.env.AIRTABLE_APPROVAL_FIELD || "Approved";
 const AIRTABLE_APPROVAL_VALUE = (process.env.AIRTABLE_APPROVAL_VALUE || "yes").toLowerCase();
-const HOURS_TO_CREDITS = Number(process.env.HOURS_TO_CREDITS || "1");
+const HOURS_TO_CREDITS = Number(process.env.HOURS_TO_CREDITS || "20");
+const DEV_BYPASS_AUTH = process.env.NODE_ENV !== "production" && process.env.DEV_BYPASS_AUTH === "1";
+const DEV_BYPASS_TOKEN = "dev-token-123";
 
 // Fetch the first matching Airtable record for the given email and return
 // both the hours field (number) and whether the record is approved.
@@ -101,6 +112,58 @@ async function getUserfromReq(req:any){
     console.error('[getUserfromReq] error', String(e));
     return null;
   }
+}
+
+async function loadShopItemsFromCsv() {
+  const fsp = await import("node:fs/promises");
+  const csvPath = path.join(process.cwd(), "assets", "shop_items-Grid view.csv");
+  const raw = await fsp.readFile(csvPath, "utf8");
+  const lines = raw.split(/\r?\n/).filter(Boolean);
+  if (lines.length <= 1) return [];
+
+  const parseLine = (line: string) => {
+    const out: string[] = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === "," && !inQuotes) {
+        out.push(cur);
+        cur = "";
+      } else {
+        cur += ch;
+      }
+    }
+    out.push(cur);
+    return out;
+  };
+
+  const rows = lines.slice(1).map((line) => {
+    const [id, title, note, img, href, createdAt, price] = parseLine(line);
+    return {
+      id: Number(id) || 0,
+      title: title || "",
+      note: note || null,
+      img: toCdnUrl(img || null),
+      href: href || null,
+      createdAt: createdAt || null,
+      price: price || "0",
+    };
+  });
+
+  return rows.sort((a, b) => {
+    const pa = Number(a.price ?? 0) || 0;
+    const pb = Number(b.price ?? 0) || 0;
+    if (pa !== pb) return pa - pb;
+    return a.id - b.id;
+  });
 }
 async function fetchSlackAvatar(opts: { slackId?: string | null; email?: string | null }): Promise<string | undefined> {
   // Try cachet first (no token needed) when we have a Slack user id
@@ -561,6 +624,20 @@ app.patch("/api/projects/:id/status", async (req, res) => {
 
 app.get("/api/auth/login", (req, res) => {
   try {
+    if (DEV_BYPASS_AUTH) {
+      const continueUrl = String((req.query && (req.query.continue || req.query.cont)) || FRONTEND_BASE_URL);
+      const secure = false;
+      const cookieOpts: Record<string, unknown> = {
+        httpOnly: true,
+        sameSite: "lax",
+        secure,
+        path: "/",
+      };
+      res.cookie("hc_identity", DEV_BYPASS_TOKEN, cookieOpts);
+      res.cookie("session", "1", cookieOpts);
+      return res.redirect(continueUrl || FRONTEND_BASE_URL);
+    }
+
     if (!IDENTITY_CLIENT_ID) {
       console.error('[auth/login] HC_IDENTITY_CLIENT_ID is not set');
       return res.status(500).json({ error: "Missing HC_IDENTITY_CLIENT_ID" });
@@ -851,6 +928,22 @@ app.get("/api/auth/profile", async (req, res) => {
     const token = extractToken(req);
     console.log('[profile] extracted token:', token?.slice ? token.slice(0,12) + '...' : token);
 
+    if (DEV_BYPASS_AUTH && token === DEV_BYPASS_TOKEN) {
+      return res.json({
+        id: "dev-admin",
+        name: "Local Dev Admin",
+        email: "dev@localhost",
+        image: null,
+        slackId: null,
+        role: "admin",
+        canManageShop: true,
+        shopOpen: true,
+        identityToken: DEV_BYPASS_TOKEN,
+        identityLinked: true,
+        credits: 999999,
+      });
+    }
+
     let userRow;
     if (token) {
       console.log('[profile] about to run raw query');
@@ -913,7 +1006,7 @@ app.get("/api/auth/profile", async (req, res) => {
 
 // Use process.cwd() to reliably reference the built `dist` directory
 // regardless of how the server is executed (works on Heroku).
-// On Vercel, static files are served by the CDN — skip filesystem serving.
+// On Vercel, static files are served by the CDN - skip filesystem serving.
 const clientPath = path.join(process.cwd(), "dist");
 if (!process.env.VERCEL) {
 const assetsPath = path.join(process.cwd(), "dist", "assets");
@@ -1025,6 +1118,11 @@ app.post('/webhook/airtable/orders', async (req, res) => {
 
 app.get("/api/shop-items", async (req, res) => {
   try {
+    if (DEV_BYPASS_AUTH) {
+      const items = await loadShopItemsFromCsv();
+      return res.json(items);
+    }
+
     const token = extractToken(req);
     if (!token) return res.status(401).json({ error: 'shop is closed' });
     const found = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
@@ -1032,7 +1130,14 @@ app.get("/api/shop-items", async (req, res) => {
     if (!u || u.role !== 'admin') return res.status(403).json({ error: 'shop is closed' });
 
     const items = await db.select().from(shopItems).orderBy(desc(shopItems.id));
-    const out = items.map((it: any) => ({ ...it, img: toCdnUrl(it.img) }));
+    const out = items
+      .map((it: any) => ({ ...it, img: toCdnUrl(it.img) }))
+      .sort((a: any, b: any) => {
+        const pa = Number(a.price ?? 0) || 0;
+        const pb = Number(b.price ?? 0) || 0;
+        if (pa !== pb) return pa - pb;
+        return Number(a.id ?? 0) - Number(b.id ?? 0);
+      });
     res.json(out);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

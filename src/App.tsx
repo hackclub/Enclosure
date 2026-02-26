@@ -32,8 +32,16 @@ const PLACEHOLDER_COVER_2 = import.meta.env.VITE_PLACEHOLDER_COVER_2 || "https:/
 const PLACEHOLDER_COVER_3 = import.meta.env.VITE_PLACEHOLDER_COVER_3 || "https://placehold.co/180x120?text=Cover+3";
 const PLACEHOLDER_COVER_4 = import.meta.env.VITE_PLACEHOLDER_COVER_4 || "https://placehold.co/180x120?text=Cover+4";
 const PLACEHOLDER_CASSOS = import.meta.env.VITE_PLACEHOLDER_CASSOS || "https://cdn.hackclub.com/019c6f69-6b4c-7c4a-91fb-287dfc078625/Cassos.png";
+const UPDATED_COVER_1 = "/updatedcover/cover1.png";
+const UPDATED_COVER_2 = "/updatedcover/cover2.png";
+const UPDATED_COVER_3 = "/updatedcover/cover3.png";
+const UPDATED_COVER_4 = "/updatedcover/cover4.png";
 const GUIDE_INTRO_TO_CAD = "/assets/guides/introToCAD.pdf";
 const GUIDE_SPRIG_ENCLOSURE = "/assets/guides/sprigEnclosure.pdf";
+
+function shopImagePathFromTitle(title: string) {
+  return `/shop/${String(title).replace(/\s+/g, "")}.png`;
+}
 
 const DESIGN_GUIDES = [
   {
@@ -407,27 +415,51 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
             <div className="cover-img cover-1">
               <a href="https://github.com/taciturnaxolotl/inky" target="_blank" rel="noreferrer">
                 <img
-                  src={PLACEHOLDER_COVER_1}
+                  src={UPDATED_COVER_1}
                   alt="Enclosure cover example 1"
+                  onError={(event) => {
+                    const img = event.currentTarget;
+                    if (img.dataset.fallback === "1") return;
+                    img.dataset.fallback = "1";
+                    img.src = PLACEHOLDER_COVER_1;
+                  }}
                 />
               </a>
             </div>
             <div className="cover-img cover-2">
               <img
-                src={PLACEHOLDER_COVER_2}
+                src={UPDATED_COVER_2}
                 alt="Enclosure cover example 2"
+                onError={(event) => {
+                  const img = event.currentTarget;
+                  if (img.dataset.fallback === "1") return;
+                  img.dataset.fallback = "1";
+                  img.src = PLACEHOLDER_COVER_2;
+                }}
               />
             </div>
             <div className="cover-img cover-3">
               <img
-                src={PLACEHOLDER_COVER_3}
+                src={UPDATED_COVER_3}
                 alt="Enclosure cover example 3"
+                onError={(event) => {
+                  const img = event.currentTarget;
+                  if (img.dataset.fallback === "1") return;
+                  img.dataset.fallback = "1";
+                  img.src = PLACEHOLDER_COVER_3;
+                }}
               />
             </div>
             <div className="cover-img cover-4">
               <img
-                src={PLACEHOLDER_COVER_4}
+                src={UPDATED_COVER_4}
                 alt="Enclosure cover example 4"
+                onError={(event) => {
+                  const img = event.currentTarget;
+                  if (img.dataset.fallback === "1") return;
+                  img.dataset.fallback = "1";
+                  img.src = PLACEHOLDER_COVER_4;
+                }}
               />
             </div>
           </div>
@@ -575,7 +607,9 @@ function Paths({ onOpenGuides }: { onOpenGuides: () => void }) {
             <h3 style={{ marginTop: 0 }}>Earn Shop Items</h3>
             <p style={{ marginTop: 6 }}>
               Track your hours with Hackatime or Lapse to unlock shop tiers and
-              prizes. Verified hours determine which rewards you can claim.
+              prizes. Verified hours determine which rewards you can claim. Value is
+              set at <strong>5 Cassos = $1</strong>, with payouts targeted around
+              <strong> 20 Cassos per verified hour</strong>.
             </p>
 
             <div style={{ marginTop: 8, color: '#ffd166', fontWeight: 800 }}>
@@ -594,7 +628,7 @@ function Paths({ onOpenGuides }: { onOpenGuides: () => void }) {
 
             <ul style={{ marginTop: 10, color: 'var(--muted)' }}>
               <li>Requires Hackatime/Lapse to count hours</li>
-              <li>Hours map to shop tiers (see shop for tier thresholds)</li>
+              <li>Tier 3 = starter rewards, Tier 2 = stronger tools and printers, Tier 1 = best rewards</li>
               <li>Prizes are shipped once verified</li>
             </ul>
 
@@ -635,45 +669,45 @@ function Gallery() {
 function Shop() {
   const tiers = [
     {
-      title: "0–19 hour picks",
+      title: "Tier 3 - Starter Rewards",
       direction: "normal" as const,
       items: [
-        { label: "Sticker pack", note: "fresh vinyl", img: "https://placehold.co/200x140?text=Stickers" },
-        { label: "Keycaps", note: "HC set", img: "https://placehold.co/200x140?text=Keycaps" },
-        { label: "3D print credit", note: "$10", img: "https://placehold.co/200x140?text=3D+Print" },
-        { label: "Domain Credits", note: "1yr", img: "https://placehold.co/200x140?text=Domain" },
-        { label: "Hosting Credits", note: "Deploying...", img: "https://cdn.hackclub.com/019c84b8-ca49-7cfd-bf18-77290996f822/hosting.webp" },
-        { label: "Filament Grant !", note: "fun", img: "https://cdn.hackclub.com/019c84b6-2f1e-70b2-a3c5-8ed865e5a0ed/download%20(1).jpg" },
-        { label: "Smolāj", note: "squish", img: "https://placehold.co/200x140?text=Plush" },
-        { label: "Solderin Iron Grant", note: "solder", img: "https://cdn.hackclub.com/019c84b4-5989-7766-8c89-c7f494d3a57d/images%20(1).jpg" },
-        { label: "Solder", note: "grid", img: "https://cdn.hackclub.com/019c84bc-51ba-7a96-9b6c-a4f9d25920f4/download%20(2).jpg" },
+        { label: "iFixit Anti-Static Wrist Strap", note: "20 Cassos · about 1h", img: "https://placehold.co/200x140?text=Anti-Static+Strap" },
+        { label: "Bambu Lab PLA Basic Filament 1kg", note: "100 Cassos · about 5h", img: "https://placehold.co/200x140?text=PLA+Basic+1kg" },
+        { label: "iFixit Moray Driver Kit", note: "100 Cassos · about 5h", img: "https://placehold.co/200x140?text=Moray+Driver+Kit" },
+        { label: "ENGINEER SS-02 Solder Sucker", note: "110 Cassos · about 5.5h", img: "https://placehold.co/200x140?text=Engineer+SS-02" },
       ],
     },
     {
-      title: "20–99 hour prizes",
+      title: "Tier 2 - Advanced Rewards",
       direction: "reverse" as const,
       items: [
-        { label: "Raspberry Pi 5", note: "Yummy !", img: "https://cdn.hackclub.com/019c84a7-70f8-7fdc-b797-ecf8f2eef3be/81XB4LUuFOL.jpg" },
-        { label: "2TB SSD", note: "storage", img: "https://placehold.co/200x140?text=SSD" },
-        { label: "PC Building Simulator", note: "2026", img: "https://cdn.hackclub.com/019c84c8-1c4a-7b03-91b9-91cc39230b96/images%20(2).jpg" },
-        { label: "Raspberry Pi 500", note: "desktop", img: "https://placehold.co/200x140?text=Pi+500" },
-        { label: "Magic Keyboard", note: "wireless", img: "https://placehold.co/200x140?text=Keyboard" },
-        { label: "Flipper Zero", note: "hacks", img: "https://placehold.co/200x140?text=Flipper" },
-        { label: "Yubikey", note: "security", img: "https://placehold.co/200x140?text=YubiKey" },
-        { label: "Headphone Grant", note: "audio", img: "https://cdn.hackclub.com/019c84b2-4d11-78ba-8426-eb9524fa7bf7/shopping.webp" },
+        { label: "Pinecil V2 Smart Soldering Iron", note: "200 Cassos · about 10h", img: "https://placehold.co/200x140?text=Pinecil+V2" },
+        { label: "Raspberry Pi Zero 2 W Starter Kit", note: "225 Cassos · about 11.25h", img: "https://placehold.co/200x140?text=Pi+Zero+2+W+Kit" },
+        { label: "YubiKey 5 NFC", note: "250 Cassos · about 12.5h", img: "https://placehold.co/200x140?text=YubiKey+5+NFC" },
+        { label: "iFixit Pro Tech Toolkit", note: "375 Cassos · about 18.75h", img: "https://placehold.co/200x140?text=Pro+Tech+Toolkit" },
+        { label: "TS101 USB-C Soldering Iron Kit", note: "450 Cassos · about 22.5h", img: "https://placehold.co/200x140?text=TS101+Kit" },
+        { label: "Logitech MX Master 3S", note: "500 Cassos · about 25h", img: "https://placehold.co/200x140?text=MX+Master+3S" },
+        { label: "Hakko FX-888DX Soldering Station", note: "600 Cassos · about 30h", img: "https://placehold.co/200x140?text=Hakko+FX-888DX" },
+        { label: "Raspberry Pi 5 8GB", note: "625 Cassos · about 31.25h", img: "https://placehold.co/200x140?text=Raspberry+Pi+5+8GB" },
+        { label: "Raspberry Pi 500", note: "650 Cassos · about 32.5h", img: "https://placehold.co/200x140?text=Raspberry+Pi+500" },
+        { label: "Flipper Zero", note: "995 Cassos · about 49.75h", img: "https://placehold.co/200x140?text=Flipper+Zero" },
+        { label: "Sony WH-1000XM4", note: "1,000 Cassos · about 50h", img: "https://placehold.co/200x140?text=WH-1000XM4" },
+        { label: "Creality Ender-3 V3 KE", note: "1,400 Cassos · about 70h", img: "https://placehold.co/200x140?text=Ender-3+V3+KE" },
+        { label: "Bambu Lab AMS lite", note: "1,400 Cassos · about 70h", img: "https://placehold.co/200x140?text=Bambu+AMS+lite" },
+        { label: "Bambu Lab A1 mini", note: "1,500 Cassos · about 75h", img: "https://placehold.co/200x140?text=Bambu+A1+mini" },
+        { label: "Anycubic Kobra 2 Pro", note: "1,500 Cassos · about 75h", img: "https://placehold.co/200x140?text=Kobra+2+Pro" },
+        { label: "ELEGOO Neptune 4 Pro", note: "1,500 Cassos · about 75h", img: "https://placehold.co/200x140?text=Neptune+4+Pro" },
+        { label: "Meta Quest 3S 128GB", note: "1,500 Cassos · about 75h", img: "https://placehold.co/200x140?text=Quest+3S+128GB" },
+        { label: "AnkerMake M5C", note: "2,000 Cassos · about 100h", img: "https://placehold.co/200x140?text=AnkerMake+M5C" },
       ],
     },
     {
-      title: "100+ hour prizes",
+      title: "Tier 1 - Best Rewards",
       direction: "normal" as const,
       items: [
-        { label: "Bambu Lab A1 mini", note: "printer", img: "https://cdn.hackclub.com/019c84b9-9483-75e4-93a8-1617a7359421/shopping%20(1).webp" },
-        { label: "Pebble Time 2", note: "classic", img: "https://placehold.co/200x140?text=Watch" },
-        { label: "Proxmark 3", note: "RFID", img: "https://placehold.co/200x140?text=RFID" },
-        { label: "Quest 3", note: "VR", img: "https://placehold.co/200x140?text=VR" },
-        { label: "Mac Mini", note: "desktop", img: "https://placehold.co/200x140?text=Mac+Mini" },
-        { label: "Nothing headphones", note: "ANC", img: "https://placehold.co/200x140?text=Headphones" },
-        { label: "AMS Lite", note: "robot", img: "https://placehold.co/200x140?text=Robot" },
+        { label: "Creality K1C", note: "2,500 Cassos · about 125h", img: "https://placehold.co/200x140?text=Creality+K1C" },
+        { label: "Bambu Lab P1P", note: "2,500 Cassos · about 125h", img: "https://placehold.co/200x140?text=Bambu+P1P" },
       ],
     },
   ];
@@ -700,13 +734,15 @@ function Shop() {
           const repeats = 2;
           const rowItems = Array.from({ length: repeats }, () => tier.items).flat();
           const scrollDistance = 100 / repeats;
+          const secondsPerItem = 2.5;
+          const animationDuration = `${(tier.items.length * secondsPerItem).toFixed(1)}s`;
           return (
             <div key={tier.title} className={`shop-rail ${tier.direction === "reverse" ? "reverse" : ""}`}>
               <h4>{tier.title}</h4>
               <div
                 className="shop-track"
                 style={{
-                  animationDuration: "17s",
+                  animationDuration,
                   // @ts-expect-error custom property
                   "--scroll-distance": `${scrollDistance}%`
                 }}
@@ -714,7 +750,18 @@ function Shop() {
                 {rowItems.map((item, i) => (
                   <div key={`${item.label}-${i}`} className="shop-card">
                     <div className="shop-img" aria-hidden>
-                      <img src={item.label.toLowerCase().includes("cassos") ? PLACEHOLDER_CASSOS : item.img} alt="" />
+                      <img
+                        src={shopImagePathFromTitle(item.label)}
+                        alt=""
+                        onError={(event) => {
+                          const img = event.currentTarget;
+                          if (img.dataset.fallback === "1") return;
+                          img.dataset.fallback = "1";
+                          img.src = item.label.toLowerCase().includes("cassos")
+                            ? PLACEHOLDER_CASSOS
+                            : (item.img || PLACEHOLDER_COVER);
+                        }}
+                      />
                     </div>
                     <h5>{item.label}</h5>
                     <div className="note">{item.note}</div>

@@ -14,6 +14,10 @@ const API_BASE = (() => {
   return "";
 })();
 
+function shopImagePathFromTitle(title: string) {
+  return `/shop/${String(title).replace(/\s+/g, "")}.png`;
+}
+
 type Order = {
   id: number;
   user_id: string;
@@ -103,9 +107,19 @@ export default function OrdersPage() {
                 const created = createdRaw ? new Date(createdRaw) : null;
                 return (
                   <div key={o.id} style={{ display: 'flex', gap: 14, background: 'var(--card)', borderRadius: 12, padding: 16, alignItems: 'center', boxShadow: '0 6px 18px rgba(0,0,0,0.06)' }}>
-                    <div style={{ width: 140, height: 100, borderRadius: 8, overflow: 'hidden', background: '#f7fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {item.img ? (
-                        <img src={item.img} alt={item.title || 'item'} style={{ maxWidth: '100%', maxHeight: '100%', display: 'block' }} />
+                      <div style={{ width: 140, height: 100, borderRadius: 8, overflow: 'hidden', background: '#f7fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {item.title || item.img ? (
+                        <img
+                          src={shopImagePathFromTitle(item.title || "")}
+                          alt={item.title || 'item'}
+                          style={{ maxWidth: '100%', maxHeight: '100%', display: 'block' }}
+                          onError={(event) => {
+                            const img = event.currentTarget;
+                            if (img.dataset.fallback === "1") return;
+                            img.dataset.fallback = "1";
+                            img.src = item.img || "https://placehold.co/400x300?text=Shop+Item";
+                          }}
+                        />
                       ) : (
                         <div style={{ color: '#9ca3af' }}>{item.title ? item.title[0] : '-'}</div>
                       )}
