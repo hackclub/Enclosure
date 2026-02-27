@@ -16,10 +16,34 @@ function startSyncScript() {
   });
 }
 startSyncScript();
+// Reconciliation script: run alongside the server and restart if it exits.
+function startReconcileScript() {
+  const enabled = process.env.RECONCILE_ON_START !== 'false';
+  if (!enabled) {
+    console.log('Reconcile script disabled via RECONCILE_ON_START=false');
+    return;
+  }
+  const reconcileScript = path.join(process.cwd(), "scripts", "reconcile_airtable_to_postgres.mjs");
+  try {
+    const proc = spawn(process.platform === "win32" ? "node" : "node", [reconcileScript], { stdio: "inherit" });
+    proc.on("exit", code => {
+      console.log("reconcile_airtable_to_postgres.mjs exited with code", code);
+      // Restart automatically after a short delay
+      setTimeout(() => {
+        console.log("Restarting reconcile_airtable_to_postgres.mjs...");
+        startReconcileScript();
+      }, 30000); // 30 second delay before restart
+    });
+  } catch (e) {
+    console.error('failed to start reconcile script', String(e));
+    // try again later
+    setTimeout(startReconcileScript, 30000);
+  }
+}
+startReconcileScript();
 import express from "express";
 console.log('server.ts loaded at', new Date().toISOString());
 import cors from "cors";
-import path from "node:path";
 import fs from "node:fs";
 import { desc, eq } from "drizzle-orm";
 import { db } from "./db.js";
@@ -270,7 +294,7 @@ app.post('/webhook/airtable/users', async (req, res) => {
     // If no existing user updated, optionally insert a new user when identityId present
     if (!updated && identityId) {
       try {
-        const [created] = await db.insert(users).values({ id: String(identityId), ...updates, createdAt: new Date() }).returning();
+        const [created] = await db.insert(users).values(({ id: String(identityId), ...updates, createdAt: new Date() } as any)).returning();
         updated = created;
       } catch (e) {
         console.error('[webhook/users] insert failed', String(e));
@@ -302,7 +326,11 @@ app.post('/webhook/airtable/orders', async (req, res) => {
 
     // If payload lacks identifying order fields, but includes an Airtable record id,
     // fetch the full record so we can access OrderId / other fields.
-    const hasOrderId = !!(fields.OrderId || fields.orderId || fields.id);
+    // Only consider explicit OrderId fields as indicating we already have
+    // the identifying OrderId. Do NOT treat an Airtable record `id` as an
+    // OrderId here — if the payload contains only a record id, we want to
+    // fetch the full record below.
+    const hasOrderId = !!(fields.OrderId || fields.orderId || fields['Order Id'] || fields['order id']);
     if (!hasOrderId && record && record.id && AIRTABLE_BASE_ID) {
       try {
         const orderTable = process.env.AIRTABLE_SHOP_TXN_TABLE || process.env.AIRTABLE_TABLE_NAME || 'shop_txns';
@@ -320,8 +348,23 @@ app.post('/webhook/airtable/orders', async (req, res) => {
       }
     }
 
-    const orderIdRaw = fields.OrderId || fields.orderId || fields.id;
-    const orderId = orderIdRaw ? Number(orderIdRaw) : null;
+    // Prefer explicit OrderId fields. Do NOT treat Airtable record ids
+    // (e.g. "rec...") as an OrderId — they can contain digits and lead to
+    // accidental numeric matches like `4` which cause incorrect updates.
+    const orderIdRaw = fields.OrderId || fields.orderId || fields['Order Id'] || fields['order id'] || null;
+    // Normalize OrderId: it may be a string containing digits; extract first integer
+    let orderId: number | null = null;
+    if (orderIdRaw !== undefined && orderIdRaw !== null) {
+      const asStr = String(orderIdRaw).trim();
+      // Try direct numeric parse first
+      if (/^-?\d+$/.test(asStr)) {
+        orderId = Number(asStr);
+      } else {
+        // Extract first continuous digits sequence
+        const m = asStr.match(/(\d+)/);
+        if (m) orderId = Number(m[1]);
+      }
+    }
     const updates: Record<string, any> = {};
     if (fields.UserId) updates.userId = String(fields.UserId);
     if (fields.ShopItemId) updates.shopItemId = String(fields.ShopItemId);
@@ -329,21 +372,32 @@ app.post('/webhook/airtable/orders', async (req, res) => {
     if (rawAmount !== undefined) updates.amount = String(rawAmount);
     if (fields.Status !== undefined) updates.status = String(fields.Status || fields.status);
     if (fields.SlackId !== undefined) updates.slackId = String(fields.SlackId);
-    updates.updatedAt = new Date();
+    // Don't add `updatedAt` for orders because the `orders` table does not
+    // include an `updated_at` column. Drizzle will strip unknown fields which
+    // could result in an empty `SET` clause and a broken UPDATE SQL statement.
+
+    // Sanitize updates to remove undefined values so Drizzle doesn't drop
+    // them and produce an empty update set.
+    const sanitized = Object.fromEntries(Object.entries(updates).filter(([k, v]) => v !== undefined));
 
     let updated: any = null;
     if (orderId) {
       const found = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
       if (found && found.length) {
-        const [u] = await db.update(orders).set(updates).where(eq(orders.id, orderId)).returning();
-        updated = u || null;
+        if (Object.keys(sanitized).length) {
+          const [u] = await db.update(orders).set(sanitized).where(eq(orders.id, orderId)).returning();
+          updated = u || null;
+        } else {
+          // Nothing to update; return the existing record as-is.
+          updated = found[0];
+        }
       } else {
         // create new order if not found
         try {
           const insertVals: Record<string, any> = Object.assign({}, updates);
           if (!insertVals.userId) insertVals.userId = updates.userId ?? null;
           if (!insertVals.amount) insertVals.amount = updates.amount ?? '0';
-          const [created] = await db.insert(orders).values(insertVals).returning();
+          const [created] = await db.insert(orders).values((insertVals as any)).returning();
           updated = created;
         } catch (e) {
           console.error('[webhook/orders] insert failed', String(e));
@@ -747,7 +801,7 @@ app.get("/api/auth/callback", async (req, res) => {
         identityToken: typeof tokenJson.access_token === "string" ? tokenJson.access_token : existing[0]?.identityToken || null,
         refreshToken: typeof tokenJson.refresh_token === "string" ? tokenJson.refresh_token : existing[0]?.refreshToken || null,
         banned: !effectiveEligible,
-        address: address ?? existing[0]?.address ?? null,
+        address: address ?? ((existing[0] && typeof (existing[0] as any).address === 'string') ? (existing[0] as any).address : null) ?? null,
           updatedAt: new Date()
       };
 
@@ -757,7 +811,7 @@ app.get("/api/auth/callback", async (req, res) => {
         // Persist to Airtable (best-effort)
         try { await upsertAirtableUser({ id: idValue, name: basePayload.name as string | null, email: basePayload.email, image: basePayload.image as string | null, slackId: basePayload.slackId as string | null, role: basePayload.role as string | null, banned: basePayload.banned }); } catch (e) { console.error('[auth] airtable upsert failed', String(e)); }
       } else {
-        await db.insert(users).values({ ...basePayload, id: idValue, createdAt: new Date() });
+        await db.insert(users).values(({ ...basePayload, id: idValue, createdAt: new Date() } as any));
         console.log("[auth] user inserted", { id: idValue });
         try { await upsertAirtableUser({ id: idValue, name: basePayload.name as string | null, email: basePayload.email, image: basePayload.image as string | null, slackId: basePayload.slackId as string | null, role: basePayload.role as string | null, banned: basePayload.banned }); } catch (e) { console.error('[auth] airtable upsert failed', String(e)); }
       }
@@ -890,6 +944,44 @@ app.get("/api/auth/profile", async (req, res) => {
       return res.status(401).json({ error: "not authenticated" });
     }
 
+    // Fetch the latest identity info from the identity provider to ensure
+    // any changes to eligibility/banned status are reflected immediately.
+    try {
+      const meUrl = new URL('/api/v1/me', IDENTITY_HOST);
+      const meRes = await fetch(meUrl, { headers: { Authorization: `Bearer ${token}` } });
+      if (meRes.ok) {
+        const meJson = await meRes.json();
+        const identity = meJson.identity || {};
+        const rawEligible = (identity as any).ysws_eligible ?? (identity as any).yswsEligible ?? (identity as any).eligible;
+        const isEligible = typeof rawEligible === 'string' ? rawEligible.toLowerCase() === 'yes' : Boolean(rawEligible);
+        let effectiveEligible = isEligible;
+        if (DEV_FORCE_ELIGIBLE === 'yes' || DEV_FORCE_ELIGIBLE === 'true') effectiveEligible = true;
+        if (DEV_FORCE_ELIGIBLE === 'no' || DEV_FORCE_ELIGIBLE === 'false') effectiveEligible = false;
+        const shouldBeBanned = !effectiveEligible;
+        // If DB differs, update it so middleware and other endpoints see the change.
+        if ((userRow.banned ? true : false) !== shouldBeBanned) {
+          try {
+            const pool2 = new Pool({ connectionString: process.env.DATABASE_URL });
+            await pool2.query('update "user" set "banned" = $1, "updated_at" = now() where "id" = $2', [shouldBeBanned, userRow.id]);
+            await pool2.end();
+            userRow.banned = shouldBeBanned;
+            console.log('[profile] synced banned status from identity provider for', userRow.id, 'banned=', shouldBeBanned);
+          } catch (e) {
+            console.error('[profile] failed to update banned status', String(e));
+          }
+        }
+        // If the user is now banned, deny access immediately.
+        if (shouldBeBanned) {
+          return res.status(403).json({ error: 'banned' });
+        }
+      } else {
+        console.log('[profile] identity provider /me returned', meRes.status);
+      }
+    } catch (e) {
+      console.error('[profile] identity fetch error', String(e));
+      // on error, continue with existing userRow (do not block access)
+    }
+
     const canManageShop = userRow.role === "admin";
     res.json({
       id: userRow.id,
@@ -977,7 +1069,7 @@ app.post('/api/webhook/airtable', async (req, res) => {
       if (existing.length) {
         await db.update(users).set({ name: payload.name, email: payload.email, image: payload.image, slackId: payload.slackId, role: payload.role, banned: payload.banned, credits: payload.credits, verificationStatus: payload.verificationStatus, updatedAt: new Date() }).where(eq(users.id, payload.id));
       } else {
-        await db.insert(users).values({ ...payload, createdAt: new Date(), updatedAt: new Date() });
+        await db.insert(users).values(({ ...payload, createdAt: new Date(), updatedAt: new Date() } as any));
       }
       return res.json({ ok: true });
     }
@@ -994,16 +1086,25 @@ app.post('/api/webhook/airtable', async (req, res) => {
       if (orderId && Number.isInteger(Number(orderId))) {
         const idNum = Number(orderId);
         const exists = await db.select().from(orders).where(eq(orders.id, idNum)).limit(1);
+        const upd: Record<string, any> = {
+          userId: userId ? String(userId) : undefined,
+          shopItemId: shopItemId ? String(shopItemId) : undefined,
+          amount: amount !== undefined && amount !== null ? String(amount) : undefined,
+          status: status !== undefined && status !== null ? String(status) : undefined,
+          slackId: slackId !== undefined && slackId !== null ? String(slackId) : undefined,
+        };
+        const sanitized = Object.fromEntries(Object.entries(upd).filter(([_, v]) => v !== undefined));
         if (exists.length) {
-          await db.update(orders).set({ userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null }).where(eq(orders.id, idNum));
+          if (Object.keys(sanitized).length) {
+            await db.update(orders).set(sanitized).where(eq(orders.id, idNum));
+          }
         } else {
-          // Drizzle's insert typing for serial pk may not allow `id` in values; cast to any when forcing id
-          await db.insert(orders).values({ id: idNum, userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date() } as any);
+          await db.insert(orders).values(({ id: idNum, userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date() } as any));
         }
         return res.json({ ok: true });
       }
       // fallback: insert new order row without forcing id
-      await db.insert(orders).values({ userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date() });
+      await db.insert(orders).values(({ userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date() } as any));
       return res.json({ ok: true });
     }
 
@@ -1014,15 +1115,7 @@ app.post('/api/webhook/airtable', async (req, res) => {
   }
 });
 
-app.post('/webhook/airtable/users', async (req, res) => {
-  const user = req.body;
-  res.sendStatus(200);
-});
-
-app.post('/webhook/airtable/orders', async (req, res) => { 
-  const order = req.body;
-  res.sendStatus(200); 
-});
+// (Webhook handlers for users/orders are defined above and handle full processing.)
 
 app.get("/api/shop-items", async (req, res) => {
   try {
