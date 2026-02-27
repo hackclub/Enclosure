@@ -1,6 +1,6 @@
-# <img width="38px" height="38px" style="vertical-align:middle" src="https://cdn.hackclub.com/019c7108-24d1-79aa-b153-bbd42d5e221a/favicon.png"> Enclosure — Hack Club YSWS
+# <img width="38px" height="38px" style="vertical-align:middle" src="https://cdn.hackclub.com/019c7108-24d1-79aa-b153-bbd42d5e221a/favicon.png"> Enclosure - Hack Club YSWS
 
-**Enclosure** is an official **Hack Club YSWS (You Ship, We Ship)** program where participants design enclosure cases (CAD models) for real-world objects — and we physically **3D print and ship the case to them**.
+**Enclosure** is an official **Hack Club YSWS (You Ship, We Ship)** program where participants design enclosure cases (CAD models) for real-world objects - and we physically **3D print and ship the case to them**.
 
 Instead of just sharing designs online…  
 you actually receive your creation in real life <br>
@@ -29,6 +29,7 @@ By:
 - Tracking your build time with <a target="_blank" href="https://hackatime.hackclub.com">Hackatime</a> and <a href="https://lapse.hackclub.com" target="_blank">Lapse</a>
 
 You earn **Cassos**, which can be spent inside the platform.
+Value guide: **5 Cassos = $1** and payouts target **about 20 Cassos per verified hour**.
 
 ---
 
