@@ -1075,6 +1075,23 @@ export default function App() {
             >
               {slackId ? slackId : 'Slack ID not available'}
             </div>
+            <div style={{ width: '100%', marginTop: 6 }}>
+              <button
+                type="button"
+                onClick={() => { window.location.href = `${API_BASE}/api/auth/logout`; }}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  border: '2px solid #222',
+                  background: '#fff',
+                  fontWeight: 800,
+                  cursor: 'pointer'
+                }}
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         )}
       </div>

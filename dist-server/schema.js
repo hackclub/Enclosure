@@ -1,3 +1,9 @@
+export const weeklyChallenges = pgTable("weekly_challenges", {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    date: text("date").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
+});
 import { pgTable, serial, text, timestamp, boolean, pgEnum } from "drizzle-orm/pg-core";
 export const userRole = pgEnum("user_role", ["admin", "reviewer", "member"]);
 export const user = pgTable("user", {
@@ -15,9 +21,9 @@ export const user = pgTable("user", {
     verificationStatus: text("verification_status"),
     identityToken: text("identity_token"),
     refreshToken: text("refresh_token"),
-    address: text("address"),
     createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: false }).defaultNow()
+    updatedAt: timestamp("updated_at", { withTimezone: false }).defaultNow(),
+    address: text("address"),
 });
 export const submissions = pgTable("submissions", {
     id: serial("id").primaryKey(),
@@ -83,6 +89,7 @@ export const orders = pgTable("orders", {
     slackId: text("slack_id"),
     amount: text("amount").notNull(),
     status: text("status").default("pending"),
+    fulfill_proof: text("fulfill_proof"), // restored column
+    createdAt: timestamp("created_at", { withTimezone: false }).defaultNow(),
     address: text("address"),
-    createdAt: timestamp("created_at", { withTimezone: false }).defaultNow()
 });
