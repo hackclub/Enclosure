@@ -15,32 +15,16 @@ function startSyncScript() {
     }, 5000); // 5 second delay before restart
   });
 }
-startSyncScript();
-// Reconciliation script: run alongside the server and restart if it exits.
-function startReconcileScript() {
-  const enabled = process.env.RECONCILE_ON_START !== 'false';
-  if (!enabled) {
-    console.log('Reconcile script disabled via RECONCILE_ON_START=false');
-    return;
-  }
-  const reconcileScript = path.join(process.cwd(), "scripts", "reconcile_airtable_to_postgres.mjs");
-  try {
-    const proc = spawn(process.platform === "win32" ? "node" : "node", [reconcileScript], { stdio: "inherit" });
-    proc.on("exit", code => {
-      console.log("reconcile_airtable_to_postgres.mjs exited with code", code);
-      // Restart automatically after a short delay
-      setTimeout(() => {
-        console.log("Restarting reconcile_airtable_to_postgres.mjs...");
-        startReconcileScript();
-      }, 30000); // 30 second delay before restart
-    });
-  } catch (e) {
-    console.error('failed to start reconcile script', String(e));
-    // try again later
-    setTimeout(startReconcileScript, 30000);
-  }
+const HAS_AIRTABLE_SYNC_CONFIG = Boolean(
+  (process.env.AIRTABLE_API_KEY || process.env.AIRTABLE_PAT) &&
+  process.env.AIRTABLE_BASE_ID &&
+  process.env.DATABASE_URL
+);
+if (HAS_AIRTABLE_SYNC_CONFIG) {
+  startSyncScript();
+} else {
+  console.log("Skipping sync_postgres_to_airtable.mjs (missing Airtable/DB config)");
 }
-startReconcileScript();
 import express from "express";
 console.log('server.ts loaded at', new Date().toISOString());
 import cors from "cors";
@@ -86,7 +70,9 @@ const AIRTABLE_HOURS_FIELD = process.env.AIRTABLE_HOURS_FIELD || "Hours";
 const AIRTABLE_APPROVED_HOURS_FIELD = process.env.AIRTABLE_APPROVED_HOURS_FIELD || AIRTABLE_HOURS_FIELD;
 const AIRTABLE_APPROVAL_FIELD = process.env.AIRTABLE_APPROVAL_FIELD || "Approved";
 const AIRTABLE_APPROVAL_VALUE = (process.env.AIRTABLE_APPROVAL_VALUE || "yes").toLowerCase();
-const HOURS_TO_CREDITS = Number(process.env.HOURS_TO_CREDITS || "1");
+const HOURS_TO_CREDITS = Number(process.env.HOURS_TO_CREDITS || "20");
+const DEV_BYPASS_AUTH = process.env.NODE_ENV !== "production" && process.env.DEV_BYPASS_AUTH === "1";
+const DEV_BYPASS_TOKEN = "dev-token-123";
 
 // Fetch the first matching Airtable record for the given email and return
 // both the hours field (number) and whether the record is approved.
@@ -126,6 +112,58 @@ async function getUserfromReq(req:any){
     console.error('[getUserfromReq] error', String(e));
     return null;
   }
+}
+
+async function loadShopItemsFromCsv() {
+  const fsp = await import("node:fs/promises");
+  const csvPath = path.join(process.cwd(), "assets", "shop_items-Grid view.csv");
+  const raw = await fsp.readFile(csvPath, "utf8");
+  const lines = raw.split(/\r?\n/).filter(Boolean);
+  if (lines.length <= 1) return [];
+
+  const parseLine = (line: string) => {
+    const out: string[] = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === "," && !inQuotes) {
+        out.push(cur);
+        cur = "";
+      } else {
+        cur += ch;
+      }
+    }
+    out.push(cur);
+    return out;
+  };
+
+  const rows = lines.slice(1).map((line) => {
+    const [id, title, note, img, href, createdAt, price] = parseLine(line);
+    return {
+      id: Number(id) || 0,
+      title: title || "",
+      note: note || null,
+      img: toCdnUrl(img || null),
+      href: href || null,
+      createdAt: createdAt || null,
+      price: price || "0",
+    };
+  });
+
+  return rows.sort((a, b) => {
+    const pa = Number(a.price ?? 0) || 0;
+    const pb = Number(b.price ?? 0) || 0;
+    if (pa !== pb) return pa - pb;
+    return a.id - b.id;
+  });
 }
 async function fetchSlackAvatar(opts: { slackId?: string | null; email?: string | null }): Promise<string | undefined> {
   // Try cachet first (no token needed) when we have a Slack user id
@@ -294,7 +332,7 @@ app.post('/webhook/airtable/users', async (req, res) => {
     // If no existing user updated, optionally insert a new user when identityId present
     if (!updated && identityId) {
       try {
-        const [created] = await db.insert(users).values(({ id: String(identityId), ...updates, createdAt: new Date() } as any)).returning();
+        const [created] = await db.insert(users).values({ id: String(identityId), ...updates, createdAt: new Date() }).returning();
         updated = created;
       } catch (e) {
         console.error('[webhook/users] insert failed', String(e));
@@ -326,11 +364,7 @@ app.post('/webhook/airtable/orders', async (req, res) => {
 
     // If payload lacks identifying order fields, but includes an Airtable record id,
     // fetch the full record so we can access OrderId / other fields.
-    // Only consider explicit OrderId fields as indicating we already have
-    // the identifying OrderId. Do NOT treat an Airtable record `id` as an
-    // OrderId here — if the payload contains only a record id, we want to
-    // fetch the full record below.
-    const hasOrderId = !!(fields.OrderId || fields.orderId || fields['Order Id'] || fields['order id']);
+    const hasOrderId = !!(fields.OrderId || fields.orderId || fields.id);
     if (!hasOrderId && record && record.id && AIRTABLE_BASE_ID) {
       try {
         const orderTable = process.env.AIRTABLE_SHOP_TXN_TABLE || process.env.AIRTABLE_TABLE_NAME || 'shop_txns';
@@ -348,23 +382,8 @@ app.post('/webhook/airtable/orders', async (req, res) => {
       }
     }
 
-    // Prefer explicit OrderId fields. Do NOT treat Airtable record ids
-    // (e.g. "rec...") as an OrderId — they can contain digits and lead to
-    // accidental numeric matches like `4` which cause incorrect updates.
-    const orderIdRaw = fields.OrderId || fields.orderId || fields['Order Id'] || fields['order id'] || null;
-    // Normalize OrderId: it may be a string containing digits; extract first integer
-    let orderId: number | null = null;
-    if (orderIdRaw !== undefined && orderIdRaw !== null) {
-      const asStr = String(orderIdRaw).trim();
-      // Try direct numeric parse first
-      if (/^-?\d+$/.test(asStr)) {
-        orderId = Number(asStr);
-      } else {
-        // Extract first continuous digits sequence
-        const m = asStr.match(/(\d+)/);
-        if (m) orderId = Number(m[1]);
-      }
-    }
+    const orderIdRaw = fields.OrderId || fields.orderId || fields.id;
+    const orderId = orderIdRaw ? Number(orderIdRaw) : null;
     const updates: Record<string, any> = {};
     if (fields.UserId) updates.userId = String(fields.UserId);
     if (fields.ShopItemId) updates.shopItemId = String(fields.ShopItemId);
@@ -372,32 +391,21 @@ app.post('/webhook/airtable/orders', async (req, res) => {
     if (rawAmount !== undefined) updates.amount = String(rawAmount);
     if (fields.Status !== undefined) updates.status = String(fields.Status || fields.status);
     if (fields.SlackId !== undefined) updates.slackId = String(fields.SlackId);
-    // Don't add `updatedAt` for orders because the `orders` table does not
-    // include an `updated_at` column. Drizzle will strip unknown fields which
-    // could result in an empty `SET` clause and a broken UPDATE SQL statement.
-
-    // Sanitize updates to remove undefined values so Drizzle doesn't drop
-    // them and produce an empty update set.
-    const sanitized = Object.fromEntries(Object.entries(updates).filter(([k, v]) => v !== undefined));
+    updates.updatedAt = new Date();
 
     let updated: any = null;
     if (orderId) {
       const found = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
       if (found && found.length) {
-        if (Object.keys(sanitized).length) {
-          const [u] = await db.update(orders).set(sanitized).where(eq(orders.id, orderId)).returning();
-          updated = u || null;
-        } else {
-          // Nothing to update; return the existing record as-is.
-          updated = found[0];
-        }
+        const [u] = await db.update(orders).set(updates).where(eq(orders.id, orderId)).returning();
+        updated = u || null;
       } else {
         // create new order if not found
         try {
           const insertVals: Record<string, any> = Object.assign({}, updates);
           if (!insertVals.userId) insertVals.userId = updates.userId ?? null;
           if (!insertVals.amount) insertVals.amount = updates.amount ?? '0';
-          const [created] = await db.insert(orders).values((insertVals as any)).returning();
+          const [created] = await db.insert(orders).values(insertVals).returning();
           updated = created;
         } catch (e) {
           console.error('[webhook/orders] insert failed', String(e));
@@ -616,6 +624,20 @@ app.patch("/api/projects/:id/status", async (req, res) => {
 
 app.get("/api/auth/login", (req, res) => {
   try {
+    if (DEV_BYPASS_AUTH) {
+      const continueUrl = String((req.query && (req.query.continue || req.query.cont)) || FRONTEND_BASE_URL);
+      const secure = false;
+      const cookieOpts: Record<string, unknown> = {
+        httpOnly: true,
+        sameSite: "lax",
+        secure,
+        path: "/",
+      };
+      res.cookie("hc_identity", DEV_BYPASS_TOKEN, cookieOpts);
+      res.cookie("session", "1", cookieOpts);
+      return res.redirect(continueUrl || FRONTEND_BASE_URL);
+    }
+
     if (!IDENTITY_CLIENT_ID) {
       console.error('[auth/login] HC_IDENTITY_CLIENT_ID is not set');
       return res.status(500).json({ error: "Missing HC_IDENTITY_CLIENT_ID" });
@@ -801,7 +823,7 @@ app.get("/api/auth/callback", async (req, res) => {
         identityToken: typeof tokenJson.access_token === "string" ? tokenJson.access_token : existing[0]?.identityToken || null,
         refreshToken: typeof tokenJson.refresh_token === "string" ? tokenJson.refresh_token : existing[0]?.refreshToken || null,
         banned: !effectiveEligible,
-        address: address ?? ((existing[0] && typeof (existing[0] as any).address === 'string') ? (existing[0] as any).address : null) ?? null,
+        address: address ?? existing[0]?.address ?? null,
           updatedAt: new Date()
       };
 
@@ -811,7 +833,7 @@ app.get("/api/auth/callback", async (req, res) => {
         // Persist to Airtable (best-effort)
         try { await upsertAirtableUser({ id: idValue, name: basePayload.name as string | null, email: basePayload.email, image: basePayload.image as string | null, slackId: basePayload.slackId as string | null, role: basePayload.role as string | null, banned: basePayload.banned }); } catch (e) { console.error('[auth] airtable upsert failed', String(e)); }
       } else {
-        await db.insert(users).values(({ ...basePayload, id: idValue, createdAt: new Date() } as any));
+        await db.insert(users).values({ ...basePayload, id: idValue, createdAt: new Date() });
         console.log("[auth] user inserted", { id: idValue });
         try { await upsertAirtableUser({ id: idValue, name: basePayload.name as string | null, email: basePayload.email, image: basePayload.image as string | null, slackId: basePayload.slackId as string | null, role: basePayload.role as string | null, banned: basePayload.banned }); } catch (e) { console.error('[auth] airtable upsert failed', String(e)); }
       }
@@ -906,6 +928,22 @@ app.get("/api/auth/profile", async (req, res) => {
     const token = extractToken(req);
     console.log('[profile] extracted token:', token?.slice ? token.slice(0,12) + '...' : token);
 
+    if (DEV_BYPASS_AUTH && token === DEV_BYPASS_TOKEN) {
+      return res.json({
+        id: "dev-admin",
+        name: "Local Dev Admin",
+        email: "dev@localhost",
+        image: null,
+        slackId: null,
+        role: "admin",
+        canManageShop: true,
+        shopOpen: true,
+        identityToken: DEV_BYPASS_TOKEN,
+        identityLinked: true,
+        credits: 999999,
+      });
+    }
+
     let userRow;
     if (token) {
       console.log('[profile] about to run raw query');
@@ -944,44 +982,6 @@ app.get("/api/auth/profile", async (req, res) => {
       return res.status(401).json({ error: "not authenticated" });
     }
 
-    // Fetch the latest identity info from the identity provider to ensure
-    // any changes to eligibility/banned status are reflected immediately.
-    try {
-      const meUrl = new URL('/api/v1/me', IDENTITY_HOST);
-      const meRes = await fetch(meUrl, { headers: { Authorization: `Bearer ${token}` } });
-      if (meRes.ok) {
-        const meJson = await meRes.json();
-        const identity = meJson.identity || {};
-        const rawEligible = (identity as any).ysws_eligible ?? (identity as any).yswsEligible ?? (identity as any).eligible;
-        const isEligible = typeof rawEligible === 'string' ? rawEligible.toLowerCase() === 'yes' : Boolean(rawEligible);
-        let effectiveEligible = isEligible;
-        if (DEV_FORCE_ELIGIBLE === 'yes' || DEV_FORCE_ELIGIBLE === 'true') effectiveEligible = true;
-        if (DEV_FORCE_ELIGIBLE === 'no' || DEV_FORCE_ELIGIBLE === 'false') effectiveEligible = false;
-        const shouldBeBanned = !effectiveEligible;
-        // If DB differs, update it so middleware and other endpoints see the change.
-        if ((userRow.banned ? true : false) !== shouldBeBanned) {
-          try {
-            const pool2 = new Pool({ connectionString: process.env.DATABASE_URL });
-            await pool2.query('update "user" set "banned" = $1, "updated_at" = now() where "id" = $2', [shouldBeBanned, userRow.id]);
-            await pool2.end();
-            userRow.banned = shouldBeBanned;
-            console.log('[profile] synced banned status from identity provider for', userRow.id, 'banned=', shouldBeBanned);
-          } catch (e) {
-            console.error('[profile] failed to update banned status', String(e));
-          }
-        }
-        // If the user is now banned, deny access immediately.
-        if (shouldBeBanned) {
-          return res.status(403).json({ error: 'banned' });
-        }
-      } else {
-        console.log('[profile] identity provider /me returned', meRes.status);
-      }
-    } catch (e) {
-      console.error('[profile] identity fetch error', String(e));
-      // on error, continue with existing userRow (do not block access)
-    }
-
     const canManageShop = userRow.role === "admin";
     res.json({
       id: userRow.id,
@@ -1006,7 +1006,7 @@ app.get("/api/auth/profile", async (req, res) => {
 
 // Use process.cwd() to reliably reference the built `dist` directory
 // regardless of how the server is executed (works on Heroku).
-// On Vercel, static files are served by the CDN — skip filesystem serving.
+// On Vercel, static files are served by the CDN - skip filesystem serving.
 const clientPath = path.join(process.cwd(), "dist");
 if (!process.env.VERCEL) {
 const assetsPath = path.join(process.cwd(), "dist", "assets");
@@ -1069,7 +1069,7 @@ app.post('/api/webhook/airtable', async (req, res) => {
       if (existing.length) {
         await db.update(users).set({ name: payload.name, email: payload.email, image: payload.image, slackId: payload.slackId, role: payload.role, banned: payload.banned, credits: payload.credits, verificationStatus: payload.verificationStatus, updatedAt: new Date() }).where(eq(users.id, payload.id));
       } else {
-        await db.insert(users).values(({ ...payload, createdAt: new Date(), updatedAt: new Date() } as any));
+        await db.insert(users).values({ ...payload, createdAt: new Date(), updatedAt: new Date() });
       }
       return res.json({ ok: true });
     }
@@ -1086,25 +1086,16 @@ app.post('/api/webhook/airtable', async (req, res) => {
       if (orderId && Number.isInteger(Number(orderId))) {
         const idNum = Number(orderId);
         const exists = await db.select().from(orders).where(eq(orders.id, idNum)).limit(1);
-        const upd: Record<string, any> = {
-          userId: userId ? String(userId) : undefined,
-          shopItemId: shopItemId ? String(shopItemId) : undefined,
-          amount: amount !== undefined && amount !== null ? String(amount) : undefined,
-          status: status !== undefined && status !== null ? String(status) : undefined,
-          slackId: slackId !== undefined && slackId !== null ? String(slackId) : undefined,
-        };
-        const sanitized = Object.fromEntries(Object.entries(upd).filter(([_, v]) => v !== undefined));
         if (exists.length) {
-          if (Object.keys(sanitized).length) {
-            await db.update(orders).set(sanitized).where(eq(orders.id, idNum));
-          }
+          await db.update(orders).set({ userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null }).where(eq(orders.id, idNum));
         } else {
-          await db.insert(orders).values(({ id: idNum, userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date() } as any));
+          // Drizzle's insert typing for serial pk may not allow `id` in values; cast to any when forcing id
+          await db.insert(orders).values({ id: idNum, userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date() } as any);
         }
         return res.json({ ok: true });
       }
       // fallback: insert new order row without forcing id
-      await db.insert(orders).values(({ userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date() } as any));
+      await db.insert(orders).values({ userId: userId ? String(userId) : null, shopItemId: shopItemId ? String(shopItemId) : null, amount: amount ? String(amount) : null, status: status ?? null, slackId: slackId ?? null, createdAt: new Date() });
       return res.json({ ok: true });
     }
 
@@ -1115,10 +1106,23 @@ app.post('/api/webhook/airtable', async (req, res) => {
   }
 });
 
-// (Webhook handlers for users/orders are defined above and handle full processing.)
+app.post('/webhook/airtable/users', async (req, res) => {
+  const user = req.body;
+  res.sendStatus(200);
+});
+
+app.post('/webhook/airtable/orders', async (req, res) => { 
+  const order = req.body;
+  res.sendStatus(200); 
+});
 
 app.get("/api/shop-items", async (req, res) => {
   try {
+    if (DEV_BYPASS_AUTH) {
+      const items = await loadShopItemsFromCsv();
+      return res.json(items);
+    }
+
     const token = extractToken(req);
     if (!token) return res.status(401).json({ error: 'shop is closed' });
     const found = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
@@ -1126,7 +1130,14 @@ app.get("/api/shop-items", async (req, res) => {
     if (!u || u.role !== 'admin') return res.status(403).json({ error: 'shop is closed' });
 
     const items = await db.select().from(shopItems).orderBy(desc(shopItems.id));
-    const out = items.map((it: any) => ({ ...it, img: toCdnUrl(it.img) }));
+    const out = items
+      .map((it: any) => ({ ...it, img: toCdnUrl(it.img) }))
+      .sort((a: any, b: any) => {
+        const pa = Number(a.price ?? 0) || 0;
+        const pb = Number(b.price ?? 0) || 0;
+        if (pa !== pb) return pa - pb;
+        return Number(a.id ?? 0) - Number(b.id ?? 0);
+      });
     res.json(out);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -14,6 +14,10 @@ const API_BASE = (() => {
   return "";
 })();
 
+function shopImagePathFromTitle(title: string) {
+  return `/shop/${String(title).replace(/\s+/g, "")}.png`;
+}
+
 type ShopItem = {
   id: number;
   title: string;
@@ -62,7 +66,13 @@ export default function ShopPage() {
         return;
       }
       const data = (await res.json()) as ShopItem[];
-      setItems(data || []);
+      const sorted = [...(data || [])].sort((a, b) => {
+        const pa = Number(a.price ?? 0) || 0;
+        const pb = Number(b.price ?? 0) || 0;
+        if (pa !== pb) return pa - pb;
+        return a.id - b.id;
+      });
+      setItems(sorted);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setStatus(`Failed to load items: ${msg}`);
@@ -247,11 +257,16 @@ export default function ShopPage() {
                 return items.map((item) => (
                   <div key={item.id} className="card shop-card">
                     <div className="shop-image">
-                      {item.img ? (
-                        <img src={item.img} alt={item.title} />
-                      ) : (
-                        <div className="shop-placeholder">No image</div>
-                      )}
+                      <img
+                        src={shopImagePathFromTitle(item.title)}
+                        alt={item.title}
+                        onError={(event) => {
+                          const img = event.currentTarget;
+                          if (img.dataset.fallback === "1") return;
+                          img.dataset.fallback = "1";
+                          img.src = item.img || "https://placehold.co/400x300?text=Shop+Item";
+                        }}
+                      />
 
                       {/* bought count removed per request */}
                       <button className="shop-fav" aria-label="favorite">☆</button>
