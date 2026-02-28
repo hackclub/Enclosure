@@ -1118,7 +1118,8 @@ app.post('/webhook/airtable/orders', async (req, res) => {
 
 app.get("/api/shop-items", async (req, res) => {
   try {
-    if (DEV_BYPASS_AUTH) {
+    const localPreview = process.env.NODE_ENV !== "production";
+    if (DEV_BYPASS_AUTH || localPreview) {
       const items = await loadShopItemsFromCsv();
       return res.json(items);
     }
