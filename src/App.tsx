@@ -32,10 +32,6 @@ const PLACEHOLDER_COVER_2 = import.meta.env.VITE_PLACEHOLDER_COVER_2 || "https:/
 const PLACEHOLDER_COVER_3 = import.meta.env.VITE_PLACEHOLDER_COVER_3 || "https://placehold.co/180x120?text=Cover+3";
 const PLACEHOLDER_COVER_4 = import.meta.env.VITE_PLACEHOLDER_COVER_4 || "https://placehold.co/180x120?text=Cover+4";
 const PLACEHOLDER_CASSOS = import.meta.env.VITE_PLACEHOLDER_CASSOS || "https://cdn.hackclub.com/019c6f69-6b4c-7c4a-91fb-287dfc078625/Cassos.png";
-const UPDATED_COVER_1 = "/updatedcover/cover1.png";
-const UPDATED_COVER_2 = "/updatedcover/cover2.png";
-const UPDATED_COVER_3 = "/updatedcover/cover3.png";
-const UPDATED_COVER_4 = "/updatedcover/cover4.png";
 const GUIDE_INTRO_TO_CAD = "/assets/guides/introToCAD.pdf";
 const GUIDE_SPRIG_ENCLOSURE = "/assets/guides/sprigEnclosure.pdf";
 
@@ -415,51 +411,27 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
             <div className="cover-img cover-1">
               <a href="https://github.com/taciturnaxolotl/inky" target="_blank" rel="noreferrer">
                 <img
-                  src={UPDATED_COVER_1}
+                  src={PLACEHOLDER_COVER_1}
                   alt="Enclosure cover example 1"
-                  onError={(event) => {
-                    const img = event.currentTarget;
-                    if (img.dataset.fallback === "1") return;
-                    img.dataset.fallback = "1";
-                    img.src = PLACEHOLDER_COVER_1;
-                  }}
                 />
               </a>
             </div>
             <div className="cover-img cover-2">
               <img
-                src={UPDATED_COVER_2}
+                src={PLACEHOLDER_COVER_2}
                 alt="Enclosure cover example 2"
-                onError={(event) => {
-                  const img = event.currentTarget;
-                  if (img.dataset.fallback === "1") return;
-                  img.dataset.fallback = "1";
-                  img.src = PLACEHOLDER_COVER_2;
-                }}
               />
             </div>
             <div className="cover-img cover-3">
               <img
-                src={UPDATED_COVER_3}
+                src={PLACEHOLDER_COVER_3}
                 alt="Enclosure cover example 3"
-                onError={(event) => {
-                  const img = event.currentTarget;
-                  if (img.dataset.fallback === "1") return;
-                  img.dataset.fallback = "1";
-                  img.src = PLACEHOLDER_COVER_3;
-                }}
               />
             </div>
             <div className="cover-img cover-4">
               <img
-                src={UPDATED_COVER_4}
+                src={PLACEHOLDER_COVER_4}
                 alt="Enclosure cover example 4"
-                onError={(event) => {
-                  const img = event.currentTarget;
-                  if (img.dataset.fallback === "1") return;
-                  img.dataset.fallback = "1";
-                  img.src = PLACEHOLDER_COVER_4;
-                }}
               />
             </div>
           </div>
