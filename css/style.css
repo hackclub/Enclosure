@@ -85,14 +85,24 @@ body {
 .cover-img {
   position: absolute;
   width: 180px;
+  aspect-ratio: 4 / 3;
   border-radius: 18px;
   border: 2px dashed var(--border);
   box-shadow: 7px 7px 0 #000;
   transform: rotate(-4deg) translateZ(0);
   transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
   background: #1c120d;
+  overflow: hidden;
   pointer-events: none;
   z-index: 1;
+}
+
+.cover-img img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #1c120d;
 }
 
 .cover-1 { top: -10px; left: -250px; transform: rotate(-6deg); }
@@ -584,8 +594,9 @@ h2 {
 .shop-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  background: #1c120d;
 }
 
 .shop-placeholder {
