@@ -515,6 +515,30 @@ app.get("/api/projects", async (_req, res) => {
   res.json(rows);
 });
 
+// Public metrics for cassos: total across all users, and optional current user's cassos
+app.get('/api/metrics/cassos', async (req, res) => {
+  try {
+    // Sum credits (stored as text) robustly: treat empty string/null as 0
+    const totalQ = await pgPool.query("SELECT COALESCE(SUM(CASE WHEN NULLIF(credits,'') IS NULL THEN 0 ELSE (credits::int) END),0) AS total FROM \"user\"");
+    const total = Number(totalQ.rows?.[0]?.total ?? 0) || 0;
+    let userCassos: number | null = null;
+    const token = extractToken(req);
+    if (token) {
+      const found = await db.select().from(users).where(eq(users.identityToken, token)).limit(1);
+      const u = found[0];
+      if (u) {
+        const raw = (u as any).credits;
+        const n = Number(raw);
+        userCassos = Number.isFinite(n) ? n : null;
+      }
+    }
+    res.json({ totalCassos: total, userCassos });
+  } catch (err) {
+    console.error('[metrics/cassos] error', String(err));
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 app.post("/api/projects", async (req, res) => {
   const { name, description, status } = req.body || {};
   if (!name || typeof name !== "string") {
