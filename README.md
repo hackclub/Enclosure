@@ -18,20 +18,7 @@ you actually receive your creation in real life <br>
 
 **You design it → we manufacture it.**
 
----
 
-## <img src="https://cdn.hackclub.com/019c6f69-6b4c-7c4a-91fb-287dfc078625/Cassos.png" width="40" style="vertical-align:middle" alt="Cassos"/> Earn Cassos (In-Platform Currency)
-
-Enclosure also includes a **shop system**.
-
-By:
-- Shipping enclosure CADs  
-- Tracking your build time with <a target="_blank" href="https://hackatime.hackclub.com">Hackatime</a> and <a href="https://lapse.hackclub.com" target="_blank">Lapse</a>
-
-You earn **Cassos**, which can be spent inside the platform.
-Value guide: **5 Cassos = $1** and payouts target **about 20 Cassos per verified hour**.
-
----
 
 ## For Developers
 
@@ -65,3 +52,7 @@ cp .env.example .env
 npm install
 npm run dev (This will start the frontend and expose the API simultaneously)
 ```
+
+---
+## For Transparency 
+We have used AI in this website mostly in backend and bug fixing although all things were reviewed before pushing. AI was used is fronted a bit to only fix some bugs !
