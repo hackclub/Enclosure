@@ -469,6 +469,7 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
             Design a custom enclosure for your project, get a 3D print of it <br></br>shipped to you, and win other prizes!
           </b>
         </p>
+        {/* cassos badge removed from public Hero */}
       
 
         <div className="buttons-wrap">
@@ -482,11 +483,7 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
                   <ActionLabel icon={<SubmitIcon />} text="Submit your project" />
                 </button>
               </a>
-              <a href="/shop">
-                <button className="btn secondary" type="button">
-                  <ActionLabel icon={<ShopIcon />} text="Visit the shop" />
-                </button>
-              </a>
+              {/* Shop is hidden from public UI per config. */}
               <a
                 target="_blank"
                 rel="noreferrer"
@@ -1017,39 +1014,7 @@ export default function App() {
         }}
         title={displayName || "User"}
       >
-        {/* Credits display to the left of the avatar */}
-          {typeof credits === "number" ? (
-            <div
-              style={{
-                position: "absolute",
-                right: 76,
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: 2100,
-              }}
-              title={String(credits)}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "8px 10px",
-                  background: "#fff",
-                  border: "2px solid #b45309",
-                  borderRadius: 12,
-                  boxShadow: "2px 2px 0 #000",
-                }}
-              >
-                <div style={{ fontWeight: 800, color: "#b45309", fontSize: 16, minWidth: 24, textAlign: "center" }}>{credits}</div>
-                <img
-                  src={PLACEHOLDER_CASSOS}
-                  alt={typeof credits === 'number' ? `${credits} cassos` : 'cassos'}
-                  style={{ width: 36, height: 42, display: 'block' }}
-                />
-              </div>
-            </div>
-          ) : null}
+        {/* cassos counter removed from header */}
         {slackAvatarUrl ? (
           <img
             src={slackAvatarUrl}
@@ -1160,7 +1125,7 @@ export default function App() {
       <HowItWorks />
       <Paths onOpenGuides={() => setShowDesignGuideModal(true)} />
       <Gallery />
-      <Shop />
+      {/* Shop component removed from public index. */}
       <Requirements />
       <FAQ />
       <Footer />
