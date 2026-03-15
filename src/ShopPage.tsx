@@ -14,8 +14,12 @@ const API_BASE = (() => {
   return "";
 })();
 
-function shopImagePathFromTitle(title: string) {
-  return `/shop/${String(title).replace(/\s+/g, "")}.png`;
+function shopImagePathFromOrder(index: number) {
+  return `/shopimg/${index + 1}.png`;
+}
+
+function legacyShopImagePathFromOrder(index: number) {
+  return `/shop/${index + 1}.png`;
 }
 
 type ShopItem = {
@@ -84,12 +88,18 @@ export default function ShopPage() {
 
   useEffect(() => {
     (async () => {
+      const isLocalDev = import.meta.env.DEV;
       let allowed = false;
       try {
         const res = await fetch(`${API_BASE}/api/auth/profile`, { credentials: "include" });
         if (!res.ok) {
-          setShopOpen(false);
-          allowed = false;
+          if (isLocalDev) {
+            setShopOpen(true);
+            allowed = true;
+          } else {
+            setShopOpen(false);
+            allowed = false;
+          }
         } else {
           const data = (await res.json()) as ProfileResponse;
           const canManage = Boolean(data.canManageShop || data.role === "admin");
@@ -100,8 +110,13 @@ export default function ShopPage() {
           allowed = canManage || Boolean(data.shopOpen);
         }
       } catch (_err) {
-        setShopOpen(false);
-        allowed = false;
+        if (isLocalDev) {
+          setShopOpen(true);
+          allowed = true;
+        } else {
+          setShopOpen(false);
+          allowed = false;
+        }
       }
 
       // Dev helper: allow enabling admin form via ?dev_admin=1
@@ -254,16 +269,21 @@ export default function ShopPage() {
                   );
                 }
 
-                return items.map((item) => (
+                return items.map((item, index) => (
                   <div key={item.id} className="card shop-card">
                     <div className="shop-image">
                       <img
-                        src={shopImagePathFromTitle(item.title)}
+                        src={shopImagePathFromOrder(index)}
                         alt={item.title}
                         onError={(event) => {
                           const img = event.currentTarget;
-                          if (img.dataset.fallback === "1") return;
-                          img.dataset.fallback = "1";
+                          if (img.dataset.fallback === "2") return;
+                          if (img.dataset.fallback !== "1") {
+                            img.dataset.fallback = "1";
+                            img.src = legacyShopImagePathFromOrder(index);
+                            return;
+                          }
+                          img.dataset.fallback = "2";
                           img.src = item.img || "https://placehold.co/400x300?text=Shop+Item";
                         }}
                       />

@@ -27,20 +27,51 @@ function toCdnUrl(path: string | null | undefined) {
 // Placeholder CDN links (configurable via Vite env)
 const PLACEHOLDER_LOGO = import.meta.env.VITE_PLACEHOLDER_LOGO || "https://cdn.hackclub.com/019c6c84-9cce-7375-ba4a-808317e0986a/logo.png";
 const PLACEHOLDER_COVER = import.meta.env.VITE_PLACEHOLDER_COVER || "https://placehold.co/180x120?text=Cover";
-const PLACEHOLDER_COVER_1 = import.meta.env.VITE_PLACEHOLDER_COVER_1 || "https://placehold.co/180x120?text=Cover+1";
-const PLACEHOLDER_COVER_2 = import.meta.env.VITE_PLACEHOLDER_COVER_2 || "https://placehold.co/180x120?text=Cover+2";
-const PLACEHOLDER_COVER_3 = import.meta.env.VITE_PLACEHOLDER_COVER_3 || "https://placehold.co/180x120?text=Cover+3";
-const PLACEHOLDER_COVER_4 = import.meta.env.VITE_PLACEHOLDER_COVER_4 || "https://placehold.co/180x120?text=Cover+4";
+const PLACEHOLDER_COVER_1 = import.meta.env.VITE_PLACEHOLDER_COVER_1 || "/covers/cameraenclosure.png";
+const PLACEHOLDER_COVER_2 = import.meta.env.VITE_PLACEHOLDER_COVER_2 || "/covers/robotenclosure.png";
+const PLACEHOLDER_COVER_3 = import.meta.env.VITE_PLACEHOLDER_COVER_3 || "/covers/sprigenclosure.png";
+const PLACEHOLDER_COVER_4 = import.meta.env.VITE_PLACEHOLDER_COVER_4 || "/covers/speakerenclosure.png";
 const PLACEHOLDER_CASSOS = import.meta.env.VITE_PLACEHOLDER_CASSOS || "https://cdn.hackclub.com/019c6f69-6b4c-7c4a-91fb-287dfc078625/Cassos.png";
-const UPDATED_COVER_1 = "/updatedcover/cover1.png";
-const UPDATED_COVER_2 = "/updatedcover/cover2.png";
-const UPDATED_COVER_3 = "/updatedcover/cover3.png";
-const UPDATED_COVER_4 = "/updatedcover/cover4.png";
 const GUIDE_INTRO_TO_CAD = "/assets/guides/introToCAD.pdf";
 const GUIDE_SPRIG_ENCLOSURE = "/assets/guides/sprigEnclosure.pdf";
 
+const SHOP_IMAGE_TITLES_IN_ORDER = [
+  "iFixit Anti-Static Wrist Strap",
+  "Bambu Lab PLA Basic Filament 1kg",
+  "iFixit Moray Driver Kit",
+  "ENGINEER SS-02 Solder Sucker",
+  "Pinecil V2 Smart Soldering Iron",
+  "Raspberry Pi Zero 2 W Starter Kit",
+  "YubiKey 5 NFC",
+  "iFixit Pro Tech Toolkit",
+  "TS101 USB-C Soldering Iron Kit",
+  "Logitech MX Master 3S",
+  "Hakko FX-888DX Soldering Station",
+  "Raspberry Pi 5 8GB",
+  "Raspberry Pi 500",
+  "Flipper Zero",
+  "Sony WH-1000XM4",
+  "Creality Ender-3 V3 KE",
+  "Bambu Lab AMS lite",
+  "Bambu Lab A1 mini",
+  "Anycubic Kobra 2 Pro",
+  "ELEGOO Neptune 4 Pro",
+];
+
+const SHOP_IMAGE_INDEX_BY_TITLE = new Map(
+  SHOP_IMAGE_TITLES_IN_ORDER.map((title, index) => [title.toLowerCase(), index + 1])
+);
+
 function shopImagePathFromTitle(title: string) {
+  const idx = SHOP_IMAGE_INDEX_BY_TITLE.get(String(title).trim().toLowerCase());
+  if (idx) return `/shopimg/${idx}.png`;
   return `/shop/${String(title).replace(/\s+/g, "")}.png`;
+}
+
+function legacyShopImagePathFromTitle(title: string) {
+  const idx = SHOP_IMAGE_INDEX_BY_TITLE.get(String(title).trim().toLowerCase());
+  if (!idx) return null;
+  return `/shop/${idx}.png`;
 }
 
 const DESIGN_GUIDES = [
@@ -415,51 +446,27 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
             <div className="cover-img cover-1">
               <a href="https://github.com/taciturnaxolotl/inky" target="_blank" rel="noreferrer">
                 <img
-                  src={UPDATED_COVER_1}
+                  src={PLACEHOLDER_COVER_1}
                   alt="Enclosure cover example 1"
-                  onError={(event) => {
-                    const img = event.currentTarget;
-                    if (img.dataset.fallback === "1") return;
-                    img.dataset.fallback = "1";
-                    img.src = PLACEHOLDER_COVER_1;
-                  }}
                 />
               </a>
             </div>
             <div className="cover-img cover-2">
               <img
-                src={UPDATED_COVER_2}
+                src={PLACEHOLDER_COVER_2}
                 alt="Enclosure cover example 2"
-                onError={(event) => {
-                  const img = event.currentTarget;
-                  if (img.dataset.fallback === "1") return;
-                  img.dataset.fallback = "1";
-                  img.src = PLACEHOLDER_COVER_2;
-                }}
               />
             </div>
             <div className="cover-img cover-3">
               <img
-                src={UPDATED_COVER_3}
+                src={PLACEHOLDER_COVER_3}
                 alt="Enclosure cover example 3"
-                onError={(event) => {
-                  const img = event.currentTarget;
-                  if (img.dataset.fallback === "1") return;
-                  img.dataset.fallback = "1";
-                  img.src = PLACEHOLDER_COVER_3;
-                }}
               />
             </div>
             <div className="cover-img cover-4">
               <img
-                src={UPDATED_COVER_4}
+                src={PLACEHOLDER_COVER_4}
                 alt="Enclosure cover example 4"
-                onError={(event) => {
-                  const img = event.currentTarget;
-                  if (img.dataset.fallback === "1") return;
-                  img.dataset.fallback = "1";
-                  img.src = PLACEHOLDER_COVER_4;
-                }}
               />
             </div>
           </div>
@@ -669,42 +676,38 @@ function Shop() {
       title: "Tier 3 - Starter Rewards",
       direction: "normal" as const,
       items: [
-        { label: "iFixit Anti-Static Wrist Strap", note: "20 Cassos · about 1h", img: "https://placehold.co/200x140?text=Anti-Static+Strap" },
-        { label: "Bambu Lab PLA Basic Filament 1kg", note: "100 Cassos · about 5h", img: "https://placehold.co/200x140?text=PLA+Basic+1kg" },
-        { label: "iFixit Moray Driver Kit", note: "100 Cassos · about 5h", img: "https://placehold.co/200x140?text=Moray+Driver+Kit" },
-        { label: "ENGINEER SS-02 Solder Sucker", note: "110 Cassos · about 5.5h", img: "https://placehold.co/200x140?text=Engineer+SS-02" },
+        { label: "iFixit Anti-Static Wrist Strap", note: "about 1h", img: "https://placehold.co/200x140?text=Anti-Static+Strap" },
+        { label: "Bambu Lab PLA Basic Filament 1kg", note: "about 5h", img: "https://placehold.co/200x140?text=PLA+Basic+1kg" },
+        { label: "iFixit Moray Driver Kit", note: "about 5h", img: "https://placehold.co/200x140?text=Moray+Driver+Kit" },
+        { label: "ENGINEER SS-02 Solder Sucker", note: "about 5.5h", img: "https://placehold.co/200x140?text=Engineer+SS-02" },
       ],
     },
     {
       title: "Tier 2 - Advanced Rewards",
       direction: "reverse" as const,
       items: [
-        { label: "Pinecil V2 Smart Soldering Iron", note: "200 Cassos · about 10h", img: "https://placehold.co/200x140?text=Pinecil+V2" },
-        { label: "Raspberry Pi Zero 2 W Starter Kit", note: "225 Cassos · about 11.25h", img: "https://placehold.co/200x140?text=Pi+Zero+2+W+Kit" },
-        { label: "YubiKey 5 NFC", note: "250 Cassos · about 12.5h", img: "https://placehold.co/200x140?text=YubiKey+5+NFC" },
-        { label: "iFixit Pro Tech Toolkit", note: "375 Cassos · about 18.75h", img: "https://placehold.co/200x140?text=Pro+Tech+Toolkit" },
-        { label: "TS101 USB-C Soldering Iron Kit", note: "450 Cassos · about 22.5h", img: "https://placehold.co/200x140?text=TS101+Kit" },
-        { label: "Logitech MX Master 3S", note: "500 Cassos · about 25h", img: "https://placehold.co/200x140?text=MX+Master+3S" },
-        { label: "Hakko FX-888DX Soldering Station", note: "600 Cassos · about 30h", img: "https://placehold.co/200x140?text=Hakko+FX-888DX" },
-        { label: "Raspberry Pi 5 8GB", note: "625 Cassos · about 31.25h", img: "https://placehold.co/200x140?text=Raspberry+Pi+5+8GB" },
-        { label: "Raspberry Pi 500", note: "650 Cassos · about 32.5h", img: "https://placehold.co/200x140?text=Raspberry+Pi+500" },
-        { label: "Flipper Zero", note: "995 Cassos · about 49.75h", img: "https://placehold.co/200x140?text=Flipper+Zero" },
-        { label: "Sony WH-1000XM4", note: "1,000 Cassos · about 50h", img: "https://placehold.co/200x140?text=WH-1000XM4" },
-        { label: "Creality Ender-3 V3 KE", note: "1,400 Cassos · about 70h", img: "https://placehold.co/200x140?text=Ender-3+V3+KE" },
-        { label: "Bambu Lab AMS lite", note: "1,400 Cassos · about 70h", img: "https://placehold.co/200x140?text=Bambu+AMS+lite" },
-        { label: "Bambu Lab A1 mini", note: "1,500 Cassos · about 75h", img: "https://placehold.co/200x140?text=Bambu+A1+mini" },
-        { label: "Anycubic Kobra 2 Pro", note: "1,500 Cassos · about 75h", img: "https://placehold.co/200x140?text=Kobra+2+Pro" },
-        { label: "ELEGOO Neptune 4 Pro", note: "1,500 Cassos · about 75h", img: "https://placehold.co/200x140?text=Neptune+4+Pro" },
-        { label: "Meta Quest 3S 128GB", note: "1,500 Cassos · about 75h", img: "https://placehold.co/200x140?text=Quest+3S+128GB" },
-        { label: "AnkerMake M5C", note: "2,000 Cassos · about 100h", img: "https://placehold.co/200x140?text=AnkerMake+M5C" },
+        { label: "Pinecil V2 Smart Soldering Iron", note: "about 10h", img: "https://placehold.co/200x140?text=Pinecil+V2" },
+        { label: "Raspberry Pi Zero 2 W Starter Kit", note: "about 11.25h", img: "https://placehold.co/200x140?text=Pi+Zero+2+W+Kit" },
+        { label: "YubiKey 5 NFC", note: "about 12.5h", img: "https://placehold.co/200x140?text=YubiKey+5+NFC" },
+        { label: "iFixit Pro Tech Toolkit", note: "about 18.75h", img: "https://placehold.co/200x140?text=Pro+Tech+Toolkit" },
+        { label: "TS101 USB-C Soldering Iron Kit", note: "about 22.5h", img: "https://placehold.co/200x140?text=TS101+Kit" },
+        { label: "Logitech MX Master 3S", note: "about 25h", img: "https://placehold.co/200x140?text=MX+Master+3S" },
+        { label: "Hakko FX-888DX Soldering Station", note: "about 30h", img: "https://placehold.co/200x140?text=Hakko+FX-888DX" },
+        { label: "Raspberry Pi 5 8GB", note: "about 31.25h", img: "https://placehold.co/200x140?text=Raspberry+Pi+5+8GB" },
+        { label: "Raspberry Pi 500", note: "about 32.5h", img: "https://placehold.co/200x140?text=Raspberry+Pi+500" },
+        { label: "Flipper Zero", note: "about 49.75h", img: "https://placehold.co/200x140?text=Flipper+Zero" },
+        { label: "Sony WH-1000XM4", note: "about 50h", img: "https://placehold.co/200x140?text=WH-1000XM4" },
       ],
     },
     {
       title: "Tier 1 - Best Rewards",
       direction: "normal" as const,
       items: [
-        { label: "Creality K1C", note: "2,500 Cassos · about 125h", img: "https://placehold.co/200x140?text=Creality+K1C" },
-        { label: "Bambu Lab P1P", note: "2,500 Cassos · about 125h", img: "https://placehold.co/200x140?text=Bambu+P1P" },
+        { label: "Creality Ender-3 V3 KE", note: "about 70h", img: "https://placehold.co/200x140?text=Ender-3+V3+KE" },
+        { label: "Bambu Lab AMS lite", note: "about 70h", img: "https://placehold.co/200x140?text=Bambu+AMS+lite" },
+        { label: "Bambu Lab A1 mini", note: "about 75h", img: "https://placehold.co/200x140?text=Bambu+A1+mini" },
+        { label: "Anycubic Kobra 2 Pro", note: "about 75h", img: "https://placehold.co/200x140?text=Kobra+2+Pro" },
+        { label: "ELEGOO Neptune 4 Pro", note: "about 75h", img: "https://placehold.co/200x140?text=Neptune+4+Pro" },
       ],
     },
   ];
@@ -752,8 +755,16 @@ function Shop() {
                         alt=""
                         onError={(event) => {
                           const img = event.currentTarget;
-                          if (img.dataset.fallback === "1") return;
-                          img.dataset.fallback = "1";
+                          if (img.dataset.fallback === "2") return;
+                          if (img.dataset.fallback !== "1") {
+                            img.dataset.fallback = "1";
+                            const legacy = legacyShopImagePathFromTitle(item.label);
+                            if (legacy) {
+                              img.src = legacy;
+                              return;
+                            }
+                          }
+                          img.dataset.fallback = "2";
                           img.src = item.label.toLowerCase().includes("cassos")
                             ? PLACEHOLDER_CASSOS
                             : (item.img || PLACEHOLDER_COVER);
@@ -871,7 +882,9 @@ export default function App() {
       try {
         const res = await fetch(`${API_BASE}/api/auth/profile`, { credentials: "include" });
         if (res.status === 401) {
-          // Not authenticated: redirect the browser to the identity provider
+          // In local Vite dev, allow browsing without forcing identity login.
+          if (import.meta.env.DEV) return;
+          // Not authenticated: redirect the browser to the identity provider.
           const cont = window.location.origin;
           window.location.href = `${API_BASE}/api/auth/login?continue=${encodeURIComponent(cont)}&force=1`;
           return;
