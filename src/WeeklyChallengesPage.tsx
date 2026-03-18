@@ -122,7 +122,7 @@ export default function WeeklyChallengesPage() {
             </ul>
             <div style={{ marginTop: 32 }}>
               <p>Submit your entry through the <a href="https://forms.hackclub.com/enclosure" target="_blank" rel="noreferrer">submission form</a> and mention the challenge name in your notes.</p>
-              <p>Winners will be featured and receive bonus cassos!</p>
+              <p>Winners will be featured and receive bonus rewards!</p>
             </div>
           </div>
         </div>

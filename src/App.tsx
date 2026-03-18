@@ -304,10 +304,7 @@ const faqItems = [
     question: "Is Lapse/Hackatime required?",
     answer: (
       <p>
-        Lapse or Hackatime is only required if you want to earn shop rewards.
-        If you only want your enclosure printed and shipped, you do not need
-        time tracking. To qualify for shop rewards, keep a short project
-        journal on Gist and include the link with your submission.
+        No, its not required!
       </p>
     ),
   },
@@ -382,10 +379,10 @@ const steps: Array<{ title: string; body: string; tag: string; icon: ReactNode }
     icon: <BoxIcon />,
   },
   {
-    title: "4. Earn Cassos",
-    body: "Use cassos to redeem awesome shop items that help you along your CAD journey.",
-    tag: "shop rewards",
-    icon: <CassosIcon />,
+    title: "4. Earn Rewards",
+    body: "Complete activities and verifications to earn rewards you can redeem.",
+    tag: "rewards",
+    icon: <TrophyIcon />,
   },
 ];
 
@@ -566,84 +563,39 @@ function Paths({ onOpenGuides }: { onOpenGuides: () => void }) {
   return (
     <section className="section" id="paths">
       <div className="container">
-        <h2>Choose Your Path</h2>
-        <div className="section-note">Choose the path that fits your experience</div>
-        <div className="grid" style={{ gap: 28, alignItems: 'stretch' }}>
-          <div className="card" style={{ padding: '20px 32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 360 }}>
-            <h3 style={{ marginTop: 0 }}>Design & Ship</h3>
-            <p style={{ marginTop: 6 }}>
-              Submit your CAD file, and our team will 3D print and ship the
-              finished enclosure to you. This path does not require Hackatime,
-              so it is ideal if you only want your design printed.
-            </p>
+        <h2>How to Participate</h2>
+        <div className="section-note">Follow this single, streamlined workflow to design, submit, and receive your printed enclosure.</div>
 
-            <div style={{ marginTop: 10 }}>
-              <strong>How it works</strong>
-              <ol style={{ marginTop: 8 }}>
-                <li>Export a clean STP / STEP (or compatible) file.</li>
-                <li>Submit via the short form, including device notes and tolerances.</li>
-                <li>We review for printability and may ask for minor tweaks.</li>
-                <li>We print, finish, and ship (typical turnaround is 2 to 4 weeks).</li>
-              </ol>
-            </div>
+        <div className="card no-tilt" style={{ padding: '22px 26px' }}>
+          <p style={{ marginBottom: 8 }}>
+            We now have one clear path — Design & Submit — which keeps the process simple. Below are the steps and helpful details to make a successful submission.
+          </p>
 
-            <ul style={{ marginTop: 10, color: 'var(--muted)' }}>
-              <li>No Hackatime required</li>
-              <li>We handle print preparation and shipping</li>
-              <li>Expected turnaround: about 2 to 4 weeks (varies by volume)</li>
-            </ul>
+          <ol style={{ marginTop: 8, paddingLeft: 20, lineHeight: 1.7 }}>
+            <li>
+              <strong>Design carefully:</strong> Model in Fusion 360 or Onshape. Consider wall thickness (recommended ≥ 2mm for structural parts), clearance for buttons/ports (0.5–1.0mm typical), and assembly tolerances.
+            </li>
+            <li>
+              <strong>Export high-quality files:</strong> Preferred format is STP/STEP. If supplying STL, ensure it's manifold, properly scaled, and exported at sufficient resolution (no decimated meshes).
+            </li>
+            <li>
+              <strong>Document intent:</strong> Add a short project journal (Gist) describing target material, intended use, critical dimensions, and any finish preferences. Paste the Gist link in the submission form.
+            </li>
+            <li>
+              <strong>Provide notes:</strong> In the form include device measurements, mounting points, and any special instructions (e.g., press-fit tolerances, removable lids, or cable channels).
+            </li>
+            <li>
+              <strong>Submission & review:</strong> Submit via the form; our team performs a printability check and may request a minor revision. Once approved, we print, post-process, and ship (typical turnaround: 2–4 weeks).
+            </li>
+          </ol>
 
-            <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
-              <a href="https://forms.hackclub.com/enclosure" target="_blank" rel="noreferrer">
-                <button className="btn">Submit design</button>
-              </a>
-              <button
-                className="btn secondary"
-                type="button"
-                onClick={onOpenGuides}
-              >
-                <ActionLabel icon={<PencilIcon />} text="Design Guide" />
-              </button>
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '20px 32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 360 }}>
-            <h3 style={{ marginTop: 0 }}>Earn Shop Items</h3>
-            <p style={{ marginTop: 6 }}>
-              Track your hours with Hackatime or Lapse to unlock shop tiers and
-              prizes. Verified hours determine which rewards you can claim. Value is
-              set at <strong>5 Cassos = $1</strong>, with payouts targeted around
-              <strong> 20 Cassos per verified hour</strong>.
-            </p>
-
-            <div style={{ marginTop: 8, color: '#ffd166', fontWeight: 800 }}>
-               Journaling required: create a project journal on <a href="https://gist.github.com/" target="_blank" rel="noreferrer" style={{ color: 'white' }}>Gist</a> and include the link in your submission.
-            </div>
-
-            <div style={{ marginTop: 10 }}>
-              <strong>What to expect</strong>
-              <ol style={{ marginTop: 8 }}>
-                <li>Sign in to Hackatime (or Lapse) and enable tracking for your sessions.</li>
-                <li>Accumulate hours to earn cassos and unlock shop rewards.</li>
-                <li>When you reach a tier, you'll be eligible to claim items from the shop.</li>
-                <li>Verification and fulfillment may take 1 to 3 weeks after claiming.</li>
-              </ol>
-            </div>
-
-            <ul style={{ marginTop: 10, color: 'var(--muted)' }}>
-              <li>Requires Hackatime/Lapse to count hours</li>
-              <li>Tier 3 = starter rewards, Tier 2 = stronger tools and printers, Tier 1 = best rewards</li>
-              <li>Prizes are shipped once verified</li>
-            </ul>
-
-            <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
-              <a href="https://hackatime.hackclub.com" target="_blank" rel="noreferrer">
-                <button className="btn secondary">Track hours</button>
-              </a>
-              <a href="/shop">
-                <button className="btn">View Shop</button>
-              </a>
-            </div>
+          <div style={{ marginTop: 14 }}>
+            <a href="https://forms.hackclub.com/enclosure" target="_blank" rel="noreferrer">
+              <button className="btn">Submit design</button>
+            </a>
+            <button className="btn secondary" type="button" style={{ marginLeft: 10 }} onClick={onOpenGuides}>
+              View Design Guide
+            </button>
           </div>
         </div>
       </div>
@@ -765,9 +717,7 @@ function Shop() {
                             }
                           }
                           img.dataset.fallback = "2";
-                          img.src = item.label.toLowerCase().includes("cassos")
-                            ? PLACEHOLDER_CASSOS
-                            : (item.img || PLACEHOLDER_COVER);
+                          img.src = item.img || PLACEHOLDER_COVER;
                         }}
                       />
                     </div>
@@ -780,17 +730,7 @@ function Shop() {
           );
         })}
       </div>
-      <div className="buttons-row" style={{ marginTop: 12, justifyContent: "center" }}>
-        <button
-          className="btn"
-          type="button"
-          onClick={() => {
-            window.location.href = "/shop";
-          }}
-        >
-          View full shop ↓
-        </button>
-      </div>
+      {/* View full shop removed from public index */}
     </section>
   );
 }
