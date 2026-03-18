@@ -350,6 +350,50 @@ h1 {
   padding: 90px 20px;
 }
 
+/* HOW TO PARTICIPATE (Paths) */
+.section#paths {
+  padding-top: 60px;
+  padding-bottom: 60px;
+}
+.section#paths .container {
+  max-width: 960px;
+}
+.section#paths .section-note {
+  margin-bottom: 22px;
+  font-size: 1.02rem;
+}
+.section#paths p {
+  max-width: 880px;
+  margin: 0 auto 12px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.section#paths ol {
+  max-width: 880px;
+  margin: 12px auto 0;
+  padding-left: 20px;
+}
+.section#paths ol li {
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 1rem;
+}
+.section#paths ol li strong {
+  color: var(--accent2);
+  font-weight: 700;
+  margin-right: 6px;
+}
+.section#paths > .container > div > .btn {
+  min-width: 160px;
+}
+
+@media (max-width: 720px) {
+  .section#paths .container { padding: 0 12px; }
+  .section#paths ol { padding-left: 16px; }
+  .section#paths p { font-size: 0.98rem; }
+}
+
 /* Pull How It Works closer to the hero */
 .section#how {
   padding-top: 0;
@@ -403,6 +447,14 @@ h2 {
 
 .card:hover {
   transform: rotate(0deg) translateY(-5px);
+}
+
+/* Utility to prevent card tilt for specific cases (e.g., How to Participate) */
+.card.no-tilt {
+  transform: rotate(0deg) !important;
+}
+.card.no-tilt:hover {
+  transform: translateY(-5px) !important;
 }
 
 .card h3 {
