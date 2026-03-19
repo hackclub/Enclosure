@@ -376,9 +376,9 @@ const steps: Array<{ title: string; body: string; tag: string; icon: ReactNode }
     icon: <BoxIcon />,
   },
   {
-    title: "4. Earn Rewards",
-    body: "Complete activities and verifications to earn rewards you can redeem.",
-    tag: "rewards",
+    title: "4. Share Your Build",
+    body: "Show your finished enclosure, share what you learned, and help others build better designs.",
+    tag: "community",
     icon: <TrophyIcon />,
   },
 ];
@@ -411,7 +411,7 @@ const requirements = [
   {
     icon: "📏",
     title: "Stay within size",
-    body: "Keep your enclosure within the posted build volume to avoid scaling.",
+    body: "Keep your enclosure dimensions practical for standard desktop 3D printers to avoid redesign requests.",
     tag: "fit the bed",
   },
   {
@@ -467,7 +467,7 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
         </div>
         <p>
           <b>
-            Design a custom enclosure for your project, get a 3D print of it <br></br>shipped to you, and win other prizes!
+            Design a custom enclosure for your project, get a 3D print of it <br></br>shipped to you!
           </b>
         </p>
         {/* cassos badge removed from public Hero */}
@@ -484,14 +484,13 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
                   <ActionLabel icon={<SubmitIcon />} text="Submit your project" />
                 </button>
               </a>
-              {/* Shop is hidden from public UI per config. */}
               <a
                 target="_blank"
                 rel="noreferrer"
-                href="https://slack.hackclub.com/join"
+                href="https://forms.hackclub.com/enclosure-workshop"
               >
                 <button className="btn secondary" type="button">
-                  <ActionLabel icon={<ChatIcon />} text="Join Slack" />
+                  <ActionLabel icon={<MicIcon />} text="Run a workshop" />
                 </button>
               </a>
             </div>
@@ -508,13 +507,14 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
                   <ActionLabel icon={<TrophyIcon />} text="Weekly Challenges" />
                 </button>
               </a>
+              {/* Shop is hidden from public UI per config. */}
               <a
                 target="_blank"
                 rel="noreferrer"
-                href="https://forms.hackclub.com/enclosure-workshop"
+                href="https://slack.hackclub.com/join"
               >
                 <button className="btn secondary" type="button">
-                  <ActionLabel icon={<MicIcon />} text="Run a workshop" />
+                  <ActionLabel icon={<ChatIcon />} text="Join Slack" />
                 </button>
               </a>
             </div>
