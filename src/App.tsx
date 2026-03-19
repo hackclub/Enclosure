@@ -32,8 +32,8 @@ const PLACEHOLDER_COVER_2 = import.meta.env.VITE_PLACEHOLDER_COVER_2 || "/covers
 const PLACEHOLDER_COVER_3 = import.meta.env.VITE_PLACEHOLDER_COVER_3 || "/covers/sprigenclosure.png";
 const PLACEHOLDER_COVER_4 = import.meta.env.VITE_PLACEHOLDER_COVER_4 || "/covers/speakerenclosure.png";
 const PLACEHOLDER_CASSOS = import.meta.env.VITE_PLACEHOLDER_CASSOS || "https://cdn.hackclub.com/019c6f69-6b4c-7c4a-91fb-287dfc078625/Cassos.png";
-const GUIDE_INTRO_TO_CAD = "/assets/guides/introToCAD.pdf";
-const GUIDE_SPRIG_ENCLOSURE = "/assets/guides/sprigEnclosure.pdf";
+const GUIDE_INTRO_TO_CAD = "/guides/introToCAD.pdf";
+const GUIDE_SPRIG_ENCLOSURE = "/guides/sprigEnclosure.pdf";
 
 const SHOP_IMAGE_TITLES_IN_ORDER = [
   "iFixit Anti-Static Wrist Strap",
