@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import GUIDE_INTRO_TO_CAD from "../guides/introToCAD.pdf";
+import GUIDE_SPRIG_ENCLOSURE from "../guides/sprigEnclosure.pdf";
 
 const API_BASE = (() => {
   const env = import.meta.env.VITE_API_BASE;
@@ -32,9 +34,6 @@ const PLACEHOLDER_COVER_2 = import.meta.env.VITE_PLACEHOLDER_COVER_2 || "/covers
 const PLACEHOLDER_COVER_3 = import.meta.env.VITE_PLACEHOLDER_COVER_3 || "/covers/sprigenclosure.png";
 const PLACEHOLDER_COVER_4 = import.meta.env.VITE_PLACEHOLDER_COVER_4 || "/covers/speakerenclosure.png";
 const PLACEHOLDER_CASSOS = import.meta.env.VITE_PLACEHOLDER_CASSOS || "https://cdn.hackclub.com/019c6f69-6b4c-7c4a-91fb-287dfc078625/Cassos.png";
-const GUIDE_INTRO_TO_CAD = "/guides/introToCAD.pdf";
-const GUIDE_SPRIG_ENCLOSURE = "/guides/sprigEnclosure.pdf";
-
 const SHOP_IMAGE_TITLES_IN_ORDER = [
   "iFixit Anti-Static Wrist Strap",
   "Bambu Lab PLA Basic Filament 1kg",
@@ -86,7 +85,7 @@ const DESIGN_GUIDES = [
     key: "sprig-enclosure",
     title: "Sprig Enclosure Guide",
     description:
-      "Once you complete the Intro to CAD guide, or if you already know Fusion 360, this guide walks through the basics of starting a Sprig enclosure. Add your own creative touches if you want to submit it for tokens.",
+      "Once you complete the Intro to CAD guide, or if you already know Fusion 360, this guide walks through the basics of starting a Sprig enclosure.",
     pdf: GUIDE_SPRIG_ENCLOSURE,
   },
 ] as const;
