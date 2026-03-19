@@ -11,8 +11,7 @@ you actually receive your creation in real life <br>
 ## What You Do
 
 1. Design an enclosure/case in any CAD software (Fusion 360, Blender, Onshape, FreeCAD, etc.)
-2. Submit your CAD files/links
-3. Attach your hackatime and lapse link in this <a href="https://forms.hackclub.com" target="_blank">form</a>
+2. Submit your CAD files/links in this <a href="https://forms.hackclub.com" target="_blank">form</a>
 5. We review and print it
 6. We ship the enclosure directly!
 
@@ -26,7 +25,6 @@ We would really appreciate contributors !
 
 You can help with:
 - Website Design
-- Shop system
 - Automation & integrations
 - Security Issues
 - Bug Fixes
