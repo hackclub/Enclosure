@@ -323,9 +323,7 @@ const faqItems = [
     question: "Is double dipping allowed?",
     answer: (
       <p>
-        You can double dip with other programs if you are not opting into shop
-        rewards. If you are opting into shop rewards, you cannot double dip
-        with other programs.
+        Yes, you can double dip with other programs!
       </p>
     ),
   },
@@ -491,7 +489,7 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
               <a
                 target="_blank"
                 rel="noreferrer"
-                href="https://hackclub.enterprise.slack.com/archives/C092D99G1RU"
+                href="https://slack.hackclub.com/join"
               >
                 <button className="btn secondary" type="button">
                   <ActionLabel icon={<ChatIcon />} text="Join Slack" />
@@ -504,7 +502,7 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
                 type="button"
                 onClick={onOpenGuides}
               >
-                <ActionLabel icon={<PencilIcon />} text="Design Guide" />
+                <ActionLabel icon={<PencilIcon />} text="Design Guides" />
               </button>
               <a href="/weekly-challenges">
                 <button className="btn secondary" type="button">
@@ -533,7 +531,7 @@ function HowItWorks() {
   return (
     <section className="section" id="how">
       <div className="container">
-        <h2>How Enclosure Works</h2>
+        <h2>How Enclosure Works?</h2>
         <div className="section-note">
           How plastic ends up at your door
         </div>
@@ -594,7 +592,7 @@ function Paths({ onOpenGuides }: { onOpenGuides: () => void }) {
               <button className="btn">Submit design</button>
             </a>
             <button className="btn secondary" type="button" style={{ marginLeft: 10 }} onClick={onOpenGuides}>
-              View Design Guide
+              View Design Guides
             </button>
           </div>
         </div>

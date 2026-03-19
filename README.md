@@ -4,7 +4,7 @@
 
 Instead of just sharing designs online…  
 you actually receive your creation in real life <br>
-~ Adhyys & Anvay
+
 
 ---
 
@@ -14,9 +14,9 @@ you actually receive your creation in real life <br>
 2. Submit your CAD files/links
 3. Attach your hackatime and lapse link in this <a href="https://forms.hackclub.com" target="_blank">form</a>
 5. We review and print it
-6. We ship the enclosure directly to you and also credit you cassos if opted for shop !
+6. We ship the enclosure directly!
 
-**You design it → we manufacture it.**
+**You design it → we print it.**
 
 
 
