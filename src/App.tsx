@@ -576,9 +576,6 @@ function Paths({ onOpenGuides }: { onOpenGuides: () => void }) {
               <strong>Export high-quality files:</strong> Preferred format is STP/STEP. If supplying STL, ensure it's manifold, properly scaled, and exported at sufficient resolution (no decimated meshes).
             </li>
             <li>
-              <strong>Document intent:</strong> Add a short project journal (Gist) describing target material, intended use, critical dimensions, and any finish preferences. Paste the Gist link in the submission form.
-            </li>
-            <li>
               <strong>Provide notes:</strong> In the form include device measurements, mounting points, and any special instructions (e.g., press-fit tolerances, removable lids, or cable channels).
             </li>
             <li>
