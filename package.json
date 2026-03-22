@@ -54,7 +54,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/react-router-dom": "^5.3.3",
-    "@vitejs/plugin-react": "^5.1.4",
+    "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^9.2.1",
     "drizzle-kit": "^0.31.9",
     "open-cli": "^8.0.0",
