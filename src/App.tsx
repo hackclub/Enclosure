@@ -303,7 +303,9 @@ const faqItems = [
     question: "Is Lapse/Hackatime required?",
     answer: (
       <p>
-        No, its not required!
+        Hackatime/Lapse is required if you want to be eligible for Tier 1 and Tier 2 prizes.
+        <br />
+        For club workshops, Hackatime/Lapse is not necessary to earn the club tier prize.
       </p>
     ),
   },
@@ -322,7 +324,7 @@ const faqItems = [
     question: "Is double dipping allowed?",
     answer: (
       <p>
-        Yes, you can double dip with other programs!
+        Yes, you can double dip with Construct!
       </p>
     ),
   },
@@ -359,7 +361,7 @@ const faqItems = [
 const steps: Array<{ title: string; body: string; tag: string; icon: ReactNode }> = [
   {
     title: "1. Design",
-    body: "Measure your device carefully, then design your enclosure in Fusion or Onshape. Button cutouts, camera bumps, and ports all matter. Add grip, texture, logos, and chaos.",
+    body: "Measure your device carefully, then design your enclosure in Fusion or Onshape. Track your build time in Lapse as you work so your hours count toward tier prizes. Button cutouts, camera bumps, and ports all matter. Add grip, texture, logos, and chaos.",
     tag: "accuracy + CAD time",
     icon: <PencilIcon />,
   },
@@ -376,9 +378,9 @@ const steps: Array<{ title: string; body: string; tag: string; icon: ReactNode }
     icon: <BoxIcon />,
   },
   {
-    title: "4. Share Your Build",
-    body: "Show your finished enclosure, share what you learned, and help others build better designs.",
-    tag: "community",
+    title: "4. Show Off & Enjoy",
+    body: "Share your finished enclosure with the community and enjoy your tier grant card rewards.",
+    tag: "showcase + rewards",
     icon: <TrophyIcon />,
   },
 ];
@@ -404,8 +406,8 @@ const requirements = [
   },
   {
     icon: "📓",
-    title: "Journal required",
-    body: "Create a project journal on Gist documenting progress, decisions, and changes. Include a link to it in your submission.",
+    title: "Lapse + Journal required",
+    body: "Track your build time in Lapse and create a project journal on Gist documenting progress, decisions, and changes. Include the journal link in your submission.",
     tag: "github",
   },
   {
@@ -423,7 +425,31 @@ const requirements = [
   
 ];
 
-function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
+  const individualPrizeTiers = [
+    {
+      name: "Tier 1",
+      hours: " hours",
+      reward: "$20 grant card + enclosure",
+    },
+    {
+      name: "Tier 2",
+      hours: "5-10 hours",
+      reward: "$10 grant card + enclosure",
+    },
+    {
+      name: "Tier 3",
+      hours: "1-2 hours",
+      reward: "Enclosure only",
+    },
+  ];
+
+  const clubPrizeTier = {
+    name: "Club Tier",
+    hours: "Per person who ships",
+    reward: "$5 grant card to each club member for every successful shipment",
+  };
+
+function Hero({ onOpenGuides, isAdmin }: { onOpenGuides: () => void; isAdmin: boolean }) {
   return (
     <section className="hero">
       <div className="hero-inner">
@@ -502,11 +528,13 @@ function Hero({ onOpenGuides }: { onOpenGuides: () => void }) {
               >
                 <ActionLabel icon={<PencilIcon />} text="Design Guides" />
               </button>
-              <a href="/weekly-challenges">
-                <button className="btn secondary" type="button">
-                  <ActionLabel icon={<TrophyIcon />} text="Weekly Challenges" />
-                </button>
-              </a>
+              {isAdmin ? (
+                <a href="/weekly-challenges">
+                  <button className="btn secondary" type="button">
+                    <ActionLabel icon={<TrophyIcon />} text="Weekly Challenges" />
+                  </button>
+                </a>
+              ) : null}
               {/* Shop is hidden from public UI per config. */}
               <a
                 target="_blank"
@@ -576,6 +604,9 @@ function Paths({ onOpenGuides }: { onOpenGuides: () => void }) {
               <strong>Export high-quality files:</strong> Preferred format is STP/STEP. If supplying STL, ensure it's manifold, properly scaled, and exported at sufficient resolution (no decimated meshes).
             </li>
             <li>
+              <strong>Track hours with Lapse:</strong> If you want to qualify for tier prizes, using Lapse to track your project hours is required.
+            </li>
+            <li>
               <strong>Provide notes:</strong> In the form include device measurements, mounting points, and any special instructions (e.g., press-fit tolerances, removable lids, or cable channels).
             </li>
             <li>
@@ -590,6 +621,45 @@ function Paths({ onOpenGuides }: { onOpenGuides: () => void }) {
             <button className="btn secondary" type="button" style={{ marginLeft: 10 }} onClick={onOpenGuides}>
               View Design Guides
             </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PrizeTiers() {
+  return (
+    <section className="section" id="prize-tiers">
+      <div className="container">
+        <h2>Prize Tiers</h2>
+        <div className="section-note">
+          Tier eligibility by tracked hours and rewards
+        </div>
+
+        <div className="card no-tilt" style={{ marginBottom: 18 }}>
+          <h3 style={{ marginTop: 0 }}>What you can buy with the grant card</h3>
+          <p style={{ marginBottom: 6 }}>
+            Grant cards can be used for project-related purchases like 3D printing materials and build supplies.
+          </p>
+          <p style={{ marginBottom: 0 }}>
+            Examples: filament, CAD/repair tools, electronics components, prototyping accessories, and workshop supplies.
+          </p>
+        </div>
+
+        <div className="grid" style={{ gap: 22 }}>
+          {individualPrizeTiers.map((tier) => (
+            <div key={tier.name} className="card no-tilt">
+              <h3 style={{ marginTop: 0 }}>{tier.name}</h3>
+              <p style={{ marginBottom: 6 }}><strong>Hours:</strong> {tier.hours}</p>
+              <p><strong>Reward:</strong> {tier.reward}</p>
+            </div>
+          ))}
+
+          <div className="card no-tilt" style={{ borderStyle: "solid" }}>
+            <h3 style={{ marginTop: 0 }}>{clubPrizeTier.name}</h3>
+            <p style={{ marginBottom: 6 }}><strong>Hours:</strong> {clubPrizeTier.hours}</p>
+            <p><strong>Reward:</strong> {clubPrizeTier.reward}</p>
           </div>
         </div>
       </div>
@@ -810,6 +880,7 @@ export default function App() {
   const [credits, setCredits] = useState<number | null>(null);
   const [showSlackPopup, setShowSlackPopup] = useState(false);
   const [showDesignGuideModal, setShowDesignGuideModal] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -826,6 +897,7 @@ export default function App() {
         if (!res.ok) return;
         const data = await res.json();
         if (data?.name) setDisplayName(data.name);
+        if (data?.canManageShop || data?.role === "admin") setIsAdmin(true);
         let resolvedSlackId = typeof data?.slackId === "string" ? data.slackId : null;
         if (!resolvedSlackId) {
           try {
@@ -1068,9 +1140,10 @@ export default function App() {
           alt="Hack Club"
         />
       </a>
-      <Hero onOpenGuides={() => setShowDesignGuideModal(true)} />
+      <Hero onOpenGuides={() => setShowDesignGuideModal(true)} isAdmin={isAdmin} />
       <HowItWorks />
       <Paths onOpenGuides={() => setShowDesignGuideModal(true)} />
+      <PrizeTiers />
       <Gallery />
       {/* Shop component removed from public index. */}
       <Requirements />

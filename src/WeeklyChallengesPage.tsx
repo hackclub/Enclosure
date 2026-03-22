@@ -16,6 +16,7 @@ const API_BASE = (() => {
 
 export default function WeeklyChallengesPage() {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [challenges, setChallenges] = useState([]);
   const [form, setForm] = useState({ name: "", date: "" });
@@ -25,10 +26,14 @@ export default function WeeklyChallengesPage() {
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/api/auth/profile`, { credentials: "include" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data?.canManageShop || data?.role === "admin") setIsAdmin(true);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.canManageShop || data?.role === "admin") setIsAdmin(true);
+        }
       } catch {}
+      finally {
+        setAuthChecked(true);
+      }
     })();
   }, []);
 
@@ -69,6 +74,21 @@ export default function WeeklyChallengesPage() {
       setStatus(`Failed to add challenge: ${String(err)}`);
     }
   };
+
+  if (!authChecked) return null;
+
+  if (!isAdmin) {
+    return (
+      <main>
+        <section className="section" id="weekly-challenges">
+          <div className="container">
+            <h2>Weekly Challenges</h2>
+            <div className="section-note">This section is currently visible to admins only.</div>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main>
