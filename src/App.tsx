@@ -610,11 +610,10 @@ function Paths({ onOpenGuides }: { onOpenGuides: () => void }) {
     <section className="section" id="paths">
       <div className="container">
         <h2>How to Participate</h2>
-        <div className="section-note">Follow this single, streamlined workflow to design, submit, and receive your printed enclosure.</div>
 
         <div className="card no-tilt" style={{ padding: '22px 26px' }}>
           <p style={{ marginBottom: 8 }}>
-            We keep the process simple with one path: design and submit. Follow the steps below to put together a strong submission.
+            We keep the process simple, so all you need to do is design and submit. Follow the steps below to put together a strong submission!
           </p>
 
           <ol style={{ marginTop: 8, paddingLeft: 20, lineHeight: 1.7 }}>
