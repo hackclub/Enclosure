@@ -469,6 +469,23 @@ h2 {
   font-size: 0.95rem;
 }
 
+.tier-detail-list {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+
+.tier-detail-list li {
+  margin-bottom: 6px;
+}
+
+.tier-detail-list li:last-child {
+  margin-bottom: 0;
+}
+
 .tag {
   display: inline-block;
   margin-top: 10px;
