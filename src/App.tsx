@@ -428,12 +428,12 @@ const requirements = [
   const individualPrizeTiers = [
     {
       name: "Tier 1",
-      hours: " hours",
+      hours: "5-10 hours",
       reward: "$20 grant card + enclosure",
     },
     {
       name: "Tier 2",
-      hours: "5-10 hours",
+      hours: "3-5 hours",
       reward: "$10 grant card + enclosure",
     },
     {
