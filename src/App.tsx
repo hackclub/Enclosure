@@ -427,19 +427,40 @@ const requirements = [
 
   const individualPrizeTiers = [
     {
-      name: "Tier 1",
+      name: "Tier 1 (Top-level)",
       hours: "5-10 hours",
-      reward: "$20 grant card + enclosure",
+      reward: "$15 grant card + special recognition or special reward.",
+      details: [
+        "Multi-part design with 4+ parts.",
+        "Clear functional purpose beyond being only a container.",
+        "Includes at least one mechanical interaction (hinge, slider, or lock).",
+        "Includes structural or electronics planning (airflow, PCB mounts, or wire management).",
+        "Submission includes design reasoning for major choices.",
+      ],
     },
     {
-      name: "Tier 2",
+      name: "Tier 2 (Mid-level)",
       hours: "3-5 hours",
-      reward: "$10 grant card + enclosure",
+      reward: "$10 grant card.",
+      details: [
+        "Multi-part design with 2+ parts.",
+        "Functional part or enclosure.",
+        "Includes a tolerance-aware feature (screw holes/inserts, snap fits/clips, or cable routing/ports).",
+        "Submission explains fit/tolerance choices for selected features.",
+        "Notes describe how parts assemble or fasten together.",
+      ],
     },
     {
-      name: "Tier 3",
-      hours: "1-2 hours",
-      reward: "Enclosure only",
+      name: "Tier 3 (Low-level)",
+      hours: "1-3 hours",
+      reward: "$5 grant card.",
+      details: [
+        "Single-part design with 1 STL only.",
+        "No moving parts (decorative shell or simple cover only).",
+        "Basic sizing is accurate for the target device or object.",
+        "Design is suitable for envelope delivery.",
+        "File is clean and print-ready (manifold, correctly scaled).",
+      ],
     },
   ];
 
@@ -593,24 +614,24 @@ function Paths({ onOpenGuides }: { onOpenGuides: () => void }) {
 
         <div className="card no-tilt" style={{ padding: '22px 26px' }}>
           <p style={{ marginBottom: 8 }}>
-            We now have one clear path — Design & Submit — which keeps the process simple. Below are the steps and helpful details to make a successful submission.
+            We keep the process simple with one path: design and submit. Follow the steps below to put together a strong submission.
           </p>
 
           <ol style={{ marginTop: 8, paddingLeft: 20, lineHeight: 1.7 }}>
             <li>
-              <strong>Design carefully:</strong> Model in Fusion 360 or Onshape. Consider wall thickness (recommended ≥ 2mm for structural parts), clearance for buttons/ports (0.5–1.0mm typical), and assembly tolerances.
+              <strong>Design carefully:</strong> Build your model in Fusion 360 or Onshape. For structural parts, use wall thickness of at least 2 mm. Leave about 0.5 to 1.0 mm of clearance for buttons and ports, and account for assembly tolerances.
             </li>
             <li>
-              <strong>Export high-quality files:</strong> Preferred format is STP/STEP. If supplying STL, ensure it's manifold, properly scaled, and exported at sufficient resolution (no decimated meshes).
+              <strong>Export high-quality files:</strong> Use STP or STEP when possible. If you submit an STL, make sure it is manifold, scaled correctly, and exported at high enough resolution.
             </li>
             <li>
-              <strong>Track hours with Lapse:</strong> If you want to qualify for tier prizes, using Lapse to track your project hours is required.
+              <strong>Track hours with Lapse:</strong> To qualify for tier prizes, you need to log your project time in Lapse.
             </li>
             <li>
-              <strong>Provide notes:</strong> In the form include device measurements, mounting points, and any special instructions (e.g., press-fit tolerances, removable lids, or cable channels).
+              <strong>Provide notes:</strong> In the form, include device measurements, mounting points, and any special instructions such as press-fit tolerances, removable lids, or cable channels.
             </li>
             <li>
-              <strong>Submission & review:</strong> Submit via the form; our team performs a printability check and may request a minor revision. Once approved, we print, post-process, and ship (typical turnaround: 2–4 weeks).
+              <strong>Submit and review:</strong> Send your project through the form. Our team checks printability and may ask for small revisions. After approval, we print, post-process, and ship your enclosure. Most projects arrive in 2 to 4 weeks.
             </li>
           </ol>
 
@@ -638,12 +659,12 @@ function PrizeTiers() {
         </div>
 
         <div className="card no-tilt" style={{ marginBottom: 18 }}>
-          <h3 style={{ marginTop: 0 }}>What you can buy with the grant card</h3>
+          <h3 style={{ marginTop: 0 }}>Tier Placement Rules</h3>
           <p style={{ marginBottom: 6 }}>
-            Grant cards can be used for project-related purchases like 3D printing materials and build supplies.
+            All tiers must include a log showing what each hour of work looked like.
           </p>
           <p style={{ marginBottom: 0 }}>
-            Examples: filament, CAD/repair tools, electronics components, prototyping accessories, and workshop supplies.
+            You should place your project in the correct tier, but reviewers may reassign the tier if it appears incorrect.
           </p>
         </div>
 
@@ -652,7 +673,13 @@ function PrizeTiers() {
             <div key={tier.name} className="card no-tilt">
               <h3 style={{ marginTop: 0 }}>{tier.name}</h3>
               <p style={{ marginBottom: 6 }}><strong>Hours:</strong> {tier.hours}</p>
-              <p><strong>Reward:</strong> {tier.reward}</p>
+              <p style={{ marginBottom: 8 }}><strong>Reward:</strong> {tier.reward}</p>
+              <p style={{ marginBottom: 6 }}><strong>Requirements:</strong></p>
+              <ul className="tier-detail-list">
+                {tier.details.map((detail) => (
+                  <li key={detail}>{detail}</li>
+                ))}
+              </ul>
             </div>
           ))}
 
@@ -1144,7 +1171,7 @@ export default function App() {
       <HowItWorks />
       <Paths onOpenGuides={() => setShowDesignGuideModal(true)} />
       <PrizeTiers />
-      <Gallery />
+      {false && <Gallery />}
       {/* Shop component removed from public index. */}
       <Requirements />
       <FAQ />
