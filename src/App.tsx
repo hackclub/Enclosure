@@ -693,6 +693,41 @@ function PrizeTiers() {
   );
 }
 
+function GrantUsage() {
+  return (
+    <section className="section" id="grant-usage">
+      <div className="container">
+        <h2>Grant Usage</h2>
+        <div className="section-note">What grant cards can and cannot be used for</div>
+
+        <div className="grid" style={{ gap: 22 }}>
+          <div className="card no-tilt">
+            <h3 style={{ marginTop: 0 }}>Allowed Purchases</h3>
+            <ul className="tier-detail-list">
+              <li>3D printing materials (filament, nozzles, beds, adhesives)</li>
+              <li>CAD and build tools (calipers, hand tools, repair kits)</li>
+              <li>Electronics and prototyping parts (sensors, wires, components)</li>
+              <li>Workshop supplies related to your enclosure project</li>
+            </ul>
+          </div>
+
+          <div className="card no-tilt" style={{ borderStyle: "solid" }}>
+            <h3 style={{ marginTop: 0 }}>Not Covered</h3>
+            <ul className="tier-detail-list">
+              <li>Unrelated personal purchases</li>
+              <li>Cash withdrawals or cash-equivalent transfers</li>
+              <li>Items not connected to your submitted project work</li>
+            </ul>
+            <p style={{ marginTop: 10, color: "#ffb4b4" }}>
+              Warning: Using grant funds for non-covered purchases can result in a Hack Club ban and loss of eligibility for future Hack Club events.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Gallery() {
   return (
     <section className="section" id="gallery">
@@ -1170,6 +1205,7 @@ export default function App() {
       <HowItWorks />
       <Paths onOpenGuides={() => setShowDesignGuideModal(true)} />
       <PrizeTiers />
+      <GrantUsage />
       {false && <Gallery />}
       {/* Shop component removed from public index. */}
       <Requirements />
