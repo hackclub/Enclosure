@@ -453,7 +453,7 @@ const requirements = [
     {
       name: "Tier 3 (Low-level)",
       hours: "1-3 hours",
-      reward: "$5 grant card.",
+      reward: "No grant card.",
       details: [
         "Single-part design with 1 STL only.",
         "No moving parts (decorative shell or simple cover only).",
