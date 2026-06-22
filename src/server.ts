@@ -515,6 +515,100 @@ app.get("/api/projects", async (_req, res) => {
   res.json(rows);
 });
 
+app.get("/api/approved", async (_req, res) => {
+  try {
+    const pat = process.env.AIRTABLE_PAT || process.env.AIRTABLE_API_KEY || "";
+    const baseId = process.env.AIRTABLE_BASE_ID || "";
+    const tableName = process.env.AIRTABLE_PROJECT_TABLE || "Project Submission";
+
+    if (!pat || !baseId) {
+      return res.json({ ok: true, projects: [] });
+    }
+
+    const records: any[] = [];
+    let offset: string | undefined;
+    do {
+      const url = new URL(`https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`);
+      url.searchParams.set("filterByFormula", `{Review Status}="Approved"`);
+      url.searchParams.set("pageSize", "100");
+      if (offset) url.searchParams.set("offset", offset);
+      const r = await fetch(url.toString(), { headers: { Authorization: `Bearer ${pat}` } });
+      if (!r.ok) {
+        const txt = await r.text();
+        console.error("[api/approved] airtable error", r.status, txt);
+        break;
+      }
+      const j = await r.json();
+      if (Array.isArray(j.records)) records.push(...j.records);
+      offset = j.offset;
+    } while (offset);
+
+    const mapped = records.map((r: any) => {
+      const f = r.fields || {};
+
+      // Collect ALL model files across all three fields
+      const toFiles = (arr: any[], type: string) =>
+        Array.isArray(arr) ? arr.map((a: any) => ({ url: a.url, filename: a.filename, type })) : [];
+      const modelFiles = [
+        ...toFiles(f["Project File (STEP)"], "step"),
+        ...toFiles(f["Project File (STL)"], "stl"),
+        ...toFiles(f["Project File"], "other"),
+      ];
+
+      // Keep legacy single-file fields for backwards compat
+      const first = modelFiles[0] || null;
+      return {
+        id: r.id,
+        title: f["Project Name"] || f.Title || f.Name || "Untitled",
+        creatorName: f["GitHub Username"] || f["Name"] || f["Email"] || "",
+        description: f["Additional Info (from participant)"] || f.Description || "",
+        status: f["Review Status"] || "",
+        imageUrl: (f.Screenshot && f.Screenshot[0]?.url) || (f.Image && f.Image[0]?.url) || "",
+        modelUrl: first?.url || null,
+        modelFileName: first?.filename || null,
+        modelFiles,
+        journalUrl: f["Journal URL"] || null,
+      };
+    });
+
+    return res.json({ ok: true, projects: mapped });
+  } catch (err) {
+    console.error("[api/approved] error", err);
+    return res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+// Shared proxy handler
+async function proxyAirtableFile(srcUrl: string, filename: string | undefined, res: any) {
+  if (!srcUrl || !srcUrl.includes("airtableusercontent.com")) {
+    return res.status(400).json({ error: "Invalid URL" });
+  }
+  try {
+    const upstream = await fetch(srcUrl);
+    if (!upstream.ok) return res.status(502).json({ error: "Upstream fetch failed" });
+    const ct = upstream.headers.get("Content-Type") || "application/octet-stream";
+    res.setHeader("Content-Type", ct);
+    res.setHeader("Content-Disposition", filename ? `inline; filename="${filename}"` : "inline");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET");
+    const buf = await upstream.arrayBuffer();
+    return res.send(Buffer.from(buf));
+  } catch (err) {
+    return res.status(500).json({ error: String(err) });
+  }
+}
+
+// Path-based proxy: /api/model-proxy/file.step?src=AIRTABLE_URL
+// The filename in the path lets 3dviewer.net detect the file type from the extension.
+app.get("/api/model-proxy/:filename", async (req, res) => {
+  await proxyAirtableFile(req.query.src as string, req.params.filename, res);
+});
+
+// Legacy query-param proxy (used for downloads)
+app.get("/api/model-proxy", async (req, res) => {
+  await proxyAirtableFile(req.query.url as string, req.query.filename as string | undefined, res);
+});
+
 // Public metrics for cassos: total across all users, and optional current user's cassos
 app.get('/api/metrics/cassos', async (req, res) => {
   try {

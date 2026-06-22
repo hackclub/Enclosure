@@ -5,6 +5,7 @@ import ShopPage from "./ShopPage";
 import OrdersPage from "./OrdersPage";
 import WeeklyChallengesPage from "./WeeklyChallengesPage";
 import WeeklyChallengesRedirector from "./WeeklyChallengesRedirector";
+import GalleryPage from "./GalleryPage";
 import "../css/style.css";
 
 const root = document.getElementById("root");
@@ -18,12 +19,14 @@ const path = window.location.pathname;
 const isShop = path === "/shop" || path === "/shop/";
 const isOrders = path === "/orders" || path === "/orders/";
 const isWeeklyChallenges = path === "/weekly-challenges" || path === "/weekly-challenges/";
+const isGallery = path === "/gallery" || path === "/gallery/";
 
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
     {isShop ? <ShopPage />
       : isOrders ? <OrdersPage />
       : isWeeklyChallenges ? <WeeklyChallengesPage />
+      : isGallery ? <GalleryPage />
       : <App />}
   </React.StrictMode>,
 );
