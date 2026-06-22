@@ -56,6 +56,14 @@ function Model3DViewer({ proxyUrl }: { proxyUrl: string }) {
       if (!OV) { setState("error"); return; }
       if (!wrapperRef.current) return;
 
+      // OV spawns a Web Worker for STEP/IGES parsing (occt-import-js). Browsers block
+      // cross-origin workers, so the loaders must be served from our own origin. These
+      // files live in assets/o3dv-libs/loaders/ (served at /o3dv-libs/loaders/ in dev,
+      // copied into dist/ for prod). OV appends "loaders/..." to this base itself.
+      if (typeof OV.SetExternalLibLocation === "function") {
+        OV.SetExternalLibLocation("/o3dv-libs");
+      }
+
       wrapperRef.current.innerHTML = "";
       const el = document.createElement("div");
       el.className = "online_3d_viewer";
