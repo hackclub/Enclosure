@@ -22,6 +22,7 @@ type Project = {
   imageUrl?: string;
   modelUrl?: string | null;
   modelFileName?: string | null;
+  tier?: string;
   [k: string]: any;
 };
 
@@ -110,6 +111,7 @@ export default function ProjectsGallery({ apiPath = "/api/approved" }: { apiPath
                   {p.imageUrl
                     ? <img src={p.imageUrl} alt={p.title || "project"} />
                     : <div className="marquee-card-img-placeholder" />}
+                  {p.tier && <span className="marquee-card-tier">{p.tier}</span>}
                 </div>
                 <div className="marquee-card-info">
                   <div className="marquee-card-title">{p.title || "Untitled"}</div>

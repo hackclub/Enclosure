@@ -55,6 +55,7 @@ export default async function handler(_req: any, res: any) {
         creatorName: f["GitHub Username"] || f["Name"] || f["Email"] || "",
         description: f["Additional Info (from participant)"] || f.Description || "",
         status: f["Review Status"] || "",
+        tier: f["Tier"] || "",
         imageUrl: (f.Screenshot && f.Screenshot[0]?.url) || (f.Image && f.Image[0]?.url) || "",
         modelUrl: first?.url || null,
         modelFileName: first?.filename || null,
