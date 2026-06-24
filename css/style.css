@@ -444,7 +444,10 @@ h1 {
   right: 8px;
   padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(18, 11, 8, 0.82);
+  /* Solid (opaque) background + no backdrop-filter: a translucent/blurred badge
+     repaints lazily inside the continuously transform-animated marquee track,
+     so it only appeared on hover. A solid fill paints every frame. */
+  background: #1c120d;
   border: 1.5px solid var(--accent2);
   color: var(--accent2);
   font-family: 'Patrick Hand', cursive;
@@ -452,7 +455,6 @@ h1 {
   line-height: 1.2;
   font-weight: 600;
   pointer-events: none;
-  backdrop-filter: blur(2px);
 }
 
 .marquee-card-img img {
@@ -1028,6 +1030,23 @@ footer {
   width: 100%;
   height: 180px;
   overflow: hidden;
+  position: relative;
+}
+
+.gallery-page-tier {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #1c120d;
+  border: 1.5px solid var(--accent2);
+  color: var(--accent2);
+  font-family: 'Patrick Hand', cursive;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  font-weight: 600;
+  pointer-events: none;
 }
 
 .gallery-page-img img {

@@ -24,6 +24,7 @@ type Project = {
   imageUrl?: string;
   modelUrl?: string | null;
   modelFileName?: string | null;
+  tier?: string;
   [k: string]: any;
 };
 
@@ -85,6 +86,7 @@ export default function GalleryPage() {
                     {p.imageUrl
                       ? <img src={p.imageUrl} alt={p.title || "project"} />
                       : <div className="gallery-page-img-placeholder" />}
+                    {p.tier && <span className="gallery-page-tier">{p.tier}</span>}
                   </div>
                   <div className="gallery-page-info">
                     <div className="gallery-page-title">{p.title || "Untitled"}</div>
