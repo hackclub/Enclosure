@@ -20,3 +20,6 @@ ngrok.exe
 assets/covers/*.exe
 assets/covers/*.xlsx.env
 *.bundle
+
+# Compiled server output (regenerate with: npm run build:server)
+dist-server/

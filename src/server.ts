@@ -72,7 +72,9 @@ const AIRTABLE_APPROVAL_FIELD = process.env.AIRTABLE_APPROVAL_FIELD || "Approved
 const AIRTABLE_APPROVAL_VALUE = (process.env.AIRTABLE_APPROVAL_VALUE || "yes").toLowerCase();
 const HOURS_TO_CREDITS = Number(process.env.HOURS_TO_CREDITS || "20");
 const DEV_BYPASS_AUTH = process.env.NODE_ENV !== "production" && process.env.DEV_BYPASS_AUTH === "1";
-const DEV_BYPASS_TOKEN = "***REMOVED***";
+// Dev-only auth bypass token. No hardcoded default — set DEV_BYPASS_TOKEN in
+// .env.local to enable the bypass locally (only when DEV_BYPASS_AUTH=1).
+const DEV_BYPASS_TOKEN = process.env.DEV_BYPASS_TOKEN || "";
 
 // Fetch the first matching Airtable record for the given email and return
 // both the hours field (number) and whether the record is approved.
@@ -1046,7 +1048,7 @@ app.get("/api/auth/profile", async (req, res) => {
     const token = extractToken(req);
     console.log('[profile] extracted token:', token?.slice ? token.slice(0,12) + '...' : token);
 
-    if (DEV_BYPASS_AUTH && token === DEV_BYPASS_TOKEN) {
+    if (DEV_BYPASS_AUTH && DEV_BYPASS_TOKEN && token === DEV_BYPASS_TOKEN) {
       return res.json({
         id: "dev-admin",
         name: "Local Dev Admin",
@@ -1407,7 +1409,7 @@ if (process.env.NODE_ENV !== "production") {
         path: "/",
       };
       if (cookieDomain) (cookieOpts as any).domain = cookieDomain;
-      res.cookie("hc_identity", "***REMOVED***", cookieOpts);
+      res.cookie("hc_identity", DEV_BYPASS_TOKEN, cookieOpts);
       const sessionOpts = { ...cookieOpts } as Record<string, unknown>;
       delete (sessionOpts as any).maxAge;
       res.cookie("session", "1", sessionOpts);

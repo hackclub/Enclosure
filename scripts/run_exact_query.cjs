@@ -22,7 +22,12 @@ const client = new Client({ connectionString: process.env.DATABASE_URL });
 (async()=>{
   await client.connect();
   const sql = 'select "id", "name", "email", "email_verified", "image", "slack_id", "banned", "credits", "role", "verification_status", "identity_token", "refresh_token", "created_at", "updated_at" from "user" where "user"."identity_token" = $1 limit $2';
-  const params = ['***REMOVED***', 1];
+  const identityToken = process.argv[2] || process.env.QUERY_IDENTITY_TOKEN;
+  if (!identityToken) {
+    console.error('Usage: node scripts/run_exact_query.cjs <identity_token>  (or set QUERY_IDENTITY_TOKEN)');
+    process.exit(1);
+  }
+  const params = [identityToken, 1];
   try {
     const res = await client.query(sql, params);
     console.log('rows', res.rows);
