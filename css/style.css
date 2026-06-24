@@ -1007,18 +1007,9 @@ footer {
 
 /* Full gallery page grid */
 .gallery-page-grid {
-  /* Flex (not grid) so a partial last row auto-centers instead of leaving an
-     empty slot — and it stays centered as new projects are added. */
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 24px;
-}
-
-.gallery-page-card {
-  width: 340px;
-  max-width: 100%;
 }
 
 .gallery-page-card {
@@ -1037,7 +1028,7 @@ footer {
 
 .gallery-page-img {
   width: 100%;
-  height: 230px;
+  height: 180px;
   overflow: hidden;
   position: relative;
 }
@@ -1067,36 +1058,30 @@ footer {
 
 .gallery-page-img-placeholder {
   width: 100%;
-  height: 230px;
+  height: 180px;
   background: rgba(255,255,255,0.03);
 }
 
 .gallery-page-info {
-  padding: 16px 18px;
-  flex: 1;
+  padding: 14px;
 }
 
 .gallery-page-title {
-  font-size: 1.12rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--fg);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .gallery-page-creator {
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   color: var(--accent2);
-  margin-top: 5px;
+  margin-top: 4px;
 }
 
 .gallery-page-desc {
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   color: var(--muted);
-  margin-top: 10px;
+  margin-top: 8px;
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 3;

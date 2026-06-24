@@ -111,7 +111,7 @@ export default function GalleryPage() {
   return (
     <>
       <div style={{ minHeight: "100vh", background: "var(--bg, #0c0806)", color: "var(--fg, #fff)", fontFamily: "inherit" }}>
-        <div style={{ maxWidth: 1480, margin: "0 auto", padding: "48px 24px" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px" }}>
           <a href="/" style={{ color: "var(--accent2)", fontSize: "0.9rem", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 32 }}>
             ← Back to home
           </a>
