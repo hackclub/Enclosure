@@ -4,6 +4,7 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/api/approved", "destination": "/api/approved" },
+    { "source": "/api/model-proxy/:filename", "destination": "/api/model-proxy/:filename" },
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
