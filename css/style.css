@@ -389,6 +389,8 @@ h1 {
 .project-body h3 { margin: 0 0 8px; font-size: 1.05rem; }
 
 /* Marquee gallery */
+#gallery { overflow-x: hidden; }
+
 @keyframes marquee-scroll {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
@@ -399,8 +401,11 @@ h1 {
   margin-top: 18px;
   position: relative;
   transform: rotate(-2deg);
-  margin-left: -40px;
-  margin-right: -40px;
+  /* Break out of the centered .container to span the full viewport width.
+     #gallery clips overflow-x so this never introduces a horizontal scrollbar. */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
   padding: 12px 0;
 }
 
@@ -416,7 +421,7 @@ h1 {
 }
 
 .marquee-card {
-  width: 220px;
+  width: 300px;
   flex-shrink: 0;
   background: rgba(12,8,6,0.5);
   border: 2px dashed var(--border);
@@ -428,7 +433,7 @@ h1 {
 
 .marquee-card-img {
   width: 100%;
-  height: 140px;
+  height: 200px;
   overflow: hidden;
 }
 
@@ -441,16 +446,16 @@ h1 {
 
 .marquee-card-img-placeholder {
   width: 100%;
-  height: 140px;
+  height: 200px;
   background: rgba(255,255,255,0.03);
 }
 
 .marquee-card-info {
-  padding: 10px 12px;
+  padding: 14px 16px;
 }
 
 .marquee-card-title {
-  font-size: 0.95rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--fg);
   white-space: nowrap;
@@ -459,7 +464,7 @@ h1 {
 }
 
 .marquee-card-creator {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--accent2);
   margin-top: 4px;
   white-space: nowrap;
