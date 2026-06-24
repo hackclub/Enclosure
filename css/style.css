@@ -1009,7 +1009,9 @@ footer {
 .gallery-page-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-auto-rows: 1fr; /* every row equal height -> uniform cards across rows */
   gap: 24px;
+  align-items: stretch;
 }
 
 .gallery-page-card {
@@ -1019,6 +1021,7 @@ footer {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  height: 100%;
   transition: transform 0.15s;
 }
 
@@ -1064,12 +1067,18 @@ footer {
 
 .gallery-page-info {
   padding: 14px;
+  flex: 1;
 }
 
 .gallery-page-title {
   font-size: 1rem;
   font-weight: 700;
   color: var(--fg);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .gallery-page-creator {
