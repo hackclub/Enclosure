@@ -29,7 +29,9 @@ type Project = {
   [k: string]: any;
 };
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
+const DEFAULT_PAGE_SIZE = 10;
+const PAGE_SIZE_KEY = "enclosure:gallery-page-size";
 
 // Compact list of page numbers with ellipses, e.g. [1, '…', 4, 5, 6, '…', 20].
 function pageWindow(current: number, total: number): (number | "…")[] {
@@ -51,6 +53,14 @@ export default function GalleryPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Project | null>(null);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(() => {
+    try {
+      const v = Number(localStorage.getItem(PAGE_SIZE_KEY));
+      return PAGE_SIZE_OPTIONS.includes(v) ? v : DEFAULT_PAGE_SIZE;
+    } catch {
+      return DEFAULT_PAGE_SIZE;
+    }
+  });
 
   useEffect(() => {
     // Show the cached list instantly, then revalidate in the background.
@@ -82,14 +92,20 @@ export default function GalleryPage() {
   }, []);
 
   const all = projects ?? [];
-  const totalPages = Math.max(1, Math.ceil(all.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(all.length / pageSize));
   const currentPage = Math.min(Math.max(1, page), totalPages);
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const pageItems = all.slice(start, start + PAGE_SIZE);
+  const start = (currentPage - 1) * pageSize;
+  const pageItems = all.slice(start, start + pageSize);
 
   function goToPage(p: number) {
     setPage(Math.min(Math.max(1, p), totalPages));
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function changePageSize(n: number) {
+    setPageSize(n);
+    setPage(1);
+    try { localStorage.setItem(PAGE_SIZE_KEY, String(n)); } catch { /* ignore */ }
   }
 
   return (
@@ -112,8 +128,21 @@ export default function GalleryPage() {
 
           {!loading && projects && projects.length > 0 && (
             <>
-              <div style={{ color: "var(--muted, #888)", marginBottom: 16, fontSize: "0.9rem" }}>
-                Showing {start + 1}–{Math.min(start + PAGE_SIZE, all.length)} of {all.length} projects
+              <div className="gallery-toolbar">
+                <span style={{ color: "var(--muted, #888)", fontSize: "0.9rem" }}>
+                  Showing {start + 1}–{Math.min(start + pageSize, all.length)} of {all.length} projects
+                </span>
+                <label className="gallery-page-size">
+                  Per page:
+                  <select
+                    value={pageSize}
+                    onChange={(e) => changePageSize(Number(e.target.value))}
+                  >
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </label>
               </div>
               <div className="gallery-page-grid">
                 {pageItems.map((p) => (

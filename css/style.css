@@ -1104,6 +1104,35 @@ footer {
   cursor: pointer;
 }
 
+/* Gallery toolbar (count + per-page selector) */
+.gallery-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.gallery-page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.gallery-page-size select {
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: var(--bg-alt, #1c120d);
+  color: var(--text);
+  font-family: 'Patrick Hand', cursive;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
 /* Gallery pagination */
 .gallery-pager {
   display: flex;
