@@ -549,6 +549,11 @@ function Hero({ onOpenGuides, isAdmin }: { onOpenGuides: () => void; isAdmin: bo
               >
                 <ActionLabel icon={<PencilIcon />} text="Design Guides" />
               </button>
+              <a href="#gallery">
+                <button className="btn secondary" type="button">
+                  <ActionLabel icon={<BoxIcon />} text="View Gallery" />
+                </button>
+              </a>
               {isAdmin ? (
                 <a href="/weekly-challenges">
                   <button className="btn secondary" type="button">
@@ -728,19 +733,15 @@ function GrantUsage() {
   );
 }
 
+import ProjectsGallery from "./components/ProjectsGallery";
+
 function Gallery() {
   return (
     <section className="section" id="gallery">
       <div className="container">
         <h2>Things Other People Made</h2>
-        <div className="gallery-locked">
-          <div className="grid">
-            <div className="gallery-box" />
-            <div className="gallery-box" />
-            <div className="gallery-box" />
-            <div className="gallery-box" />
-          </div>
-          <div className="lock-overlay">🔒 Coming soon</div>
+        <div className="projects-gallery-wrap">
+          <ProjectsGallery apiPath="/api/approved" />
         </div>
       </div>
     </section>
@@ -1206,7 +1207,7 @@ export default function App() {
       <Paths onOpenGuides={() => setShowDesignGuideModal(true)} />
       <PrizeTiers />
       <GrantUsage />
-      {false && <Gallery />}
+      <Gallery />
       {/* Shop component removed from public index. */}
       <Requirements />
       <FAQ />

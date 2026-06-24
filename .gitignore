@@ -1,9 +1,25 @@
 node_modules/
 dist/
+/node_modules
+
+# Environment / secrets — never commit these
 .env
-.env.local
+.env.*
+!.env.example
+*.local
+
+# Local tool / editor settings that may contain tokens
+.claude/settings.local.json
+
+# Logs (have leaked DB connection strings before)
+*.log
+db_conn.log
+
+# Misc local binaries / backups
+ngrok.exe
 assets/covers/*.exe
 assets/covers/*.xlsx.env
-/node_modules
-db_conn.log
-ngrok.exe
+*.bundle
+
+# Compiled server output (regenerate with: npm run build:server)
+dist-server/

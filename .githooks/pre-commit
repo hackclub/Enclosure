@@ -1,0 +1,33 @@
+#!/bin/sh
+# Pre-commit secret scanner for Enclosure.
+# Blocks commits that introduce credentials. Enable with:
+#   git config core.hooksPath .githooks
+#
+# High-confidence patterns only, to avoid false positives. References to
+# process.env / placeholders (your_*, ***REMOVED***, USER:PASSWORD) are allowed.
+
+# Only scan lines being ADDED (not context/removed), excluding lock files.
+added=$(git diff --cached --unified=0 --no-color -- . \
+        ':(exclude)*.lock' ':(exclude)package-lock.json' ':(exclude)yarn.lock' \
+        ':(exclude).githooks/*' \
+        | grep '^+' | grep -v '^+++')
+
+# Strip obvious safe placeholders before matching.
+candidates=$(printf '%s\n' "$added" \
+  | grep -viE 'process\.env|import\.meta\.env|your_|example|<[a-z_]+>|USER:PASSWORD|\*\*\*REMOVED\*\*\*|xxx+|changeme|placeholder')
+
+hits=$(printf '%s\n' "$candidates" | grep -nEi \
+  'postgres(ql)?://[^ :/@"'"'"']+:[^ @"'"'"']+@[^ "'"'"']+|-----BEGIN [A-Z ]*PRIVATE KEY-----|npg_[A-Za-z0-9]{8,}|pat[A-Za-z0-9]{14}\.[A-Za-z0-9]{40,}|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{36}|xox[baprs]-[A-Za-z0-9-]{10,}|(client_secret|api[_-]?key|secret|password|passwd|access[_-]?token)["'"'"' ]*[:=]["'"'"' ]*[A-Za-z0-9._\-]{16,}')
+
+if [ -n "$hits" ]; then
+  echo "============================================================"
+  echo " COMMIT BLOCKED: possible secret(s) in staged changes:"
+  echo "------------------------------------------------------------"
+  printf '%s\n' "$hits"
+  echo "------------------------------------------------------------"
+  echo " If this is a false positive, bypass with:  git commit --no-verify"
+  echo " Otherwise: move the value into .env (gitignored) and use process.env."
+  echo "============================================================"
+  exit 1
+fi
+exit 0
