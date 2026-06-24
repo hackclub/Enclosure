@@ -29,10 +29,28 @@ type Project = {
   [k: string]: any;
 };
 
+const PAGE_SIZE = 12;
+
+// Compact list of page numbers with ellipses, e.g. [1, '…', 4, 5, 6, '…', 20].
+function pageWindow(current: number, total: number): (number | "…")[] {
+  const pages = new Set<number>([1, total]);
+  for (let p = current - 1; p <= current + 1; p++) if (p >= 1 && p <= total) pages.add(p);
+  const sorted = [...pages].sort((a, b) => a - b);
+  const out: (number | "…")[] = [];
+  let prev = 0;
+  for (const p of sorted) {
+    if (prev && p - prev > 1) out.push("…");
+    out.push(p);
+    prev = p;
+  }
+  return out;
+}
+
 export default function GalleryPage() {
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Project | null>(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     // Show the cached list instantly, then revalidate in the background.
@@ -63,6 +81,17 @@ export default function GalleryPage() {
     load();
   }, []);
 
+  const all = projects ?? [];
+  const totalPages = Math.max(1, Math.ceil(all.length / PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = all.slice(start, start + PAGE_SIZE);
+
+  function goToPage(p: number) {
+    setPage(Math.min(Math.max(1, p), totalPages));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
     <>
       <div style={{ minHeight: "100vh", background: "var(--bg, #0c0806)", color: "var(--fg, #fff)", fontFamily: "inherit" }}>
@@ -82,30 +111,68 @@ export default function GalleryPage() {
           )}
 
           {!loading && projects && projects.length > 0 && (
-            <div className="gallery-page-grid">
-              {projects.map((p) => (
-                <div
-                  className="gallery-page-card gallery-page-card-clickable"
-                  key={p.id}
-                  onClick={() => setSelected(p)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={e => e.key === "Enter" && setSelected(p)}
-                >
-                  <div className="gallery-page-img">
-                    {p.imageUrl
-                      ? <img src={p.imageUrl} alt={p.title || "project"} />
-                      : <div className="gallery-page-img-placeholder" />}
-                    {p.tier && <span className="gallery-page-tier">{p.tier}</span>}
+            <>
+              <div style={{ color: "var(--muted, #888)", marginBottom: 16, fontSize: "0.9rem" }}>
+                Showing {start + 1}–{Math.min(start + PAGE_SIZE, all.length)} of {all.length} projects
+              </div>
+              <div className="gallery-page-grid">
+                {pageItems.map((p) => (
+                  <div
+                    className="gallery-page-card gallery-page-card-clickable"
+                    key={p.id}
+                    onClick={() => setSelected(p)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={e => e.key === "Enter" && setSelected(p)}
+                  >
+                    <div className="gallery-page-img">
+                      {p.imageUrl
+                        ? <img src={p.imageUrl} alt={p.title || "project"} />
+                        : <div className="gallery-page-img-placeholder" />}
+                      {p.tier && <span className="gallery-page-tier">{p.tier}</span>}
+                    </div>
+                    <div className="gallery-page-info">
+                      <div className="gallery-page-title">{p.title || "Untitled"}</div>
+                      {p.creatorName && <div className="gallery-page-creator">@{p.creatorName}</div>}
+                      {p.description && <p className="gallery-page-desc">{p.description}</p>}
+                    </div>
                   </div>
-                  <div className="gallery-page-info">
-                    <div className="gallery-page-title">{p.title || "Untitled"}</div>
-                    {p.creatorName && <div className="gallery-page-creator">@{p.creatorName}</div>}
-                    {p.description && <p className="gallery-page-desc">{p.description}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <nav className="gallery-pager" aria-label="Gallery pages">
+                  <button
+                    className="gallery-pager-btn"
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    ← Prev
+                  </button>
+                  {pageWindow(currentPage, totalPages).map((p, i) =>
+                    p === "…" ? (
+                      <span key={`gap-${i}`} className="gallery-pager-gap">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        className={`gallery-pager-btn${p === currentPage ? " is-active" : ""}`}
+                        onClick={() => goToPage(p)}
+                        aria-current={p === currentPage ? "page" : undefined}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
+                  <button
+                    className="gallery-pager-btn"
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next →
+                  </button>
+                </nav>
+              )}
+            </>
           )}
         </div>
       </div>

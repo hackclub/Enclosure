@@ -1104,6 +1104,51 @@ footer {
   cursor: pointer;
 }
 
+/* Gallery pagination */
+.gallery-pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 36px;
+}
+
+.gallery-pager-btn {
+  min-width: 40px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-family: 'Patrick Hand', cursive;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.gallery-pager-btn:hover:not(:disabled) {
+  background: rgba(255, 183, 3, 0.12);
+  transform: translateY(-1px);
+}
+
+.gallery-pager-btn.is-active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #1a0f0a;
+  border-color: var(--accent2);
+  font-weight: 700;
+}
+
+.gallery-pager-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.gallery-pager-gap {
+  color: var(--muted);
+  padding: 0 4px;
+}
+
 .marquee-card-clickable {
   cursor: pointer;
 }
