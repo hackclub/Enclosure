@@ -6,6 +6,11 @@ import path from "node:path";
 function startSyncScript() {
   const syncScript = path.join(process.cwd(), "scripts", "sync_postgres_to_airtable.mjs");
   const proc = spawn(process.platform === "win32" ? "node" : "node", [syncScript], { stdio: "inherit" });
+  // Without an 'error' listener a failed spawn throws and crashes the process
+  // (this is what took down the Vercel serverless function).
+  proc.on("error", err => {
+    console.error("Failed to start sync_postgres_to_airtable.mjs:", err);
+  });
   proc.on("exit", code => {
     console.log("sync_postgres_to_airtable.mjs exited with code", code);
     // Restart automatically if it exits unexpectedly
@@ -20,10 +25,12 @@ const HAS_AIRTABLE_SYNC_CONFIG = Boolean(
   process.env.AIRTABLE_BASE_ID &&
   process.env.DATABASE_URL
 );
-if (HAS_AIRTABLE_SYNC_CONFIG) {
+// Never spawn the background sync on serverless (Vercel) — it can't run a
+// persistent child process and the script isn't in the function bundle.
+if (!process.env.VERCEL && HAS_AIRTABLE_SYNC_CONFIG) {
   startSyncScript();
 } else {
-  console.log("Skipping sync_postgres_to_airtable.mjs (missing Airtable/DB config)");
+  console.log("Skipping sync_postgres_to_airtable.mjs (serverless or missing Airtable/DB config)");
 }
 import express from "express";
 console.log('server.ts loaded at', new Date().toISOString());
