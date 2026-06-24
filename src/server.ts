@@ -580,13 +580,29 @@ app.get("/api/approved", async (_req, res) => {
   }
 });
 
+function getSafeAirtableUrl(srcUrl: unknown): string | null {
+  if (typeof srcUrl !== "string") return null;
+  try {
+    const parsed = new URL(srcUrl);
+    const host = parsed.hostname.toLowerCase();
+    if (parsed.protocol !== "https:") return null;
+    const allowedHosts = new Set(["airtableusercontent.com", "v5.airtableusercontent.com"]);
+    if (!allowedHosts.has(host)) return null;
+    const normalizedHost = host === "v5.airtableusercontent.com" ? "v5.airtableusercontent.com" : "airtableusercontent.com";
+    return new URL(`${parsed.pathname}${parsed.search}`, `https://${normalizedHost}`).toString();
+  } catch {
+    return null;
+  }
+}
+
 // Shared proxy handler
-async function proxyAirtableFile(srcUrl: string, filename: string | undefined, res: any) {
-  if (!srcUrl || !srcUrl.includes("airtableusercontent.com")) {
+async function proxyAirtableFile(srcUrl: unknown, filename: string | undefined, res: any) {
+  const safeUrl = getSafeAirtableUrl(srcUrl);
+  if (!safeUrl) {
     return res.status(400).json({ error: "Invalid URL" });
   }
   try {
-    const upstream = await fetch(srcUrl);
+    const upstream = await fetch(safeUrl);
     if (!upstream.ok) return res.status(502).json({ error: "Upstream fetch failed" });
     const ct = upstream.headers.get("Content-Type") || "application/octet-stream";
     res.setHeader("Content-Type", ct);
@@ -603,12 +619,12 @@ async function proxyAirtableFile(srcUrl: string, filename: string | undefined, r
 // Path-based proxy: /api/model-proxy/file.step?src=AIRTABLE_URL
 // The filename in the path lets 3dviewer.net detect the file type from the extension.
 app.get("/api/model-proxy/:filename", async (req, res) => {
-  await proxyAirtableFile(req.query.src as string, req.params.filename, res);
+  await proxyAirtableFile(req.query.src, req.params.filename, res);
 });
 
 // Legacy query-param proxy (used for downloads)
 app.get("/api/model-proxy", async (req, res) => {
-  await proxyAirtableFile(req.query.url as string, req.query.filename as string | undefined, res);
+  await proxyAirtableFile(req.query.url, typeof req.query.filename === "string" ? req.query.filename : undefined, res);
 });
 
 // Public metrics for cassos: total across all users, and optional current user's cassos
