@@ -90,7 +90,6 @@ export default function GalleryPage() {
                     <div className="gallery-page-title">{p.title || "Untitled"}</div>
                     {p.creatorName && <div className="gallery-page-creator">@{p.creatorName}</div>}
                     {p.description && <p className="gallery-page-desc">{p.description}</p>}
-                    {p.modelUrl && <div className="gallery-page-model-badge">🧊 3D model</div>}
                   </div>
                 </div>
               ))}
