@@ -29,8 +29,8 @@ type Project = {
   [k: string]: any;
 };
 
-const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
-const DEFAULT_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [6, 12, 24, 48];
+const DEFAULT_PAGE_SIZE = 12;
 const PAGE_SIZE_KEY = "enclosure:gallery-page-size";
 
 // Compact list of page numbers with ellipses, e.g. [1, '…', 4, 5, 6, '…', 20].
