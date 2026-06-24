@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ProjectModal from "./ProjectModal";
+import { getCachedApproved, setCachedApproved } from "../approvedCache";
 
 const API_BASE = (() => {
   const env = import.meta.env.VITE_API_BASE;
@@ -33,8 +34,16 @@ export default function ProjectsGallery({ apiPath = "/api/approved" }: { apiPath
 
   useEffect(() => {
     let mounted = true;
+
+    // Render the cached list instantly (no spinner), then revalidate below.
+    const cached = getCachedApproved<Project>();
+    if (cached && mounted) {
+      setProjects(cached);
+      setLoading(false);
+    }
+
     async function load() {
-      setLoading(true);
+      if (!cached) setLoading(true);
       try {
         let res: Response | null = null;
         try {
@@ -49,8 +58,9 @@ export default function ProjectsGallery({ apiPath = "/api/approved" }: { apiPath
         const j = await res.json();
         const list = Array.isArray(j.projects) ? j.projects : (j || []);
         if (mounted) setProjects(list);
+        setCachedApproved(list);
       } catch {
-        // show placeholder on any error
+        // keep cached/placeholder on any error
       } finally {
         if (mounted) setLoading(false);
       }

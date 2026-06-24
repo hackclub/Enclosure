@@ -581,6 +581,7 @@ app.get("/api/approved", async (_req, res) => {
       };
     });
 
+    res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
     return res.json({ ok: true, projects: mapped });
   } catch (err) {
     console.error("[api/approved] error", err);

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "../css/style.css";
 import ProjectModal from "./components/ProjectModal";
+import { getCachedApproved, setCachedApproved } from "./approvedCache";
 
 const API_BASE = (() => {
   const env = import.meta.env.VITE_API_BASE;
@@ -34,6 +35,13 @@ export default function GalleryPage() {
   const [selected, setSelected] = useState<Project | null>(null);
 
   useEffect(() => {
+    // Show the cached list instantly, then revalidate in the background.
+    const cached = getCachedApproved<Project>();
+    if (cached) {
+      setProjects(cached);
+      setLoading(false);
+    }
+
     async function load() {
       try {
         let res: Response | null = null;
@@ -43,9 +51,11 @@ export default function GalleryPage() {
         }
         if (!res || !res.ok) return;
         const j = await res.json();
-        setProjects(Array.isArray(j.projects) ? j.projects : []);
+        const list = Array.isArray(j.projects) ? j.projects : [];
+        setProjects(list);
+        setCachedApproved(list);
       } catch {
-        setProjects([]);
+        if (!cached) setProjects([]);
       } finally {
         setLoading(false);
       }

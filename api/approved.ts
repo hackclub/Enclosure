@@ -64,6 +64,9 @@ export default async function handler(_req: any, res: any) {
       };
     });
 
+    // Edge-cache on Vercel's CDN: serve cached for 60s, then serve stale while
+    // revalidating for another 5 min. Airtable is hit ~once/min instead of per request.
+    res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({ ok: true, projects });
   } catch (err: any) {
     console.error("[api/approved] error", err);
