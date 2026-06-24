@@ -53,7 +53,7 @@ export default async function handler(_req: any, res: any) {
         id: rec.id,
         title: f["Project Name"] || f.Title || f.Name || "Untitled",
         creatorName: f["GitHub Username"] || f["Name"] || f["Email"] || "",
-        description: f["Additional Info (from participant)"] || f.Description || "",
+        description: f["Description"] || f["Additional Info (from participant)"] || "",
         status: f["Review Status"] || "",
         tier: f["Tier"] || "",
         imageUrl: (f.Screenshot && f.Screenshot[0]?.url) || (f.Image && f.Image[0]?.url) || "",
