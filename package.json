@@ -57,7 +57,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^9.2.1",
     "drizzle-kit": "^0.31.9",
-    "open-cli": "^8.0.0",
+    "open-cli": "^9.0.0",
     "serve": "^14.2.5",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
